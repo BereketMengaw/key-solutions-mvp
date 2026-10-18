@@ -11,16 +11,17 @@ import { TopBarHome } from '@/components/TopBar';
 import { useAuth } from '@/lib/auth';
 import { confirmDestructive } from '@/lib/confirm';
 import { useDraft } from '@/lib/draft';
+import { useLive, useLiveRefetch } from '@/lib/live';
+import { PAID, READY } from '@/lib/names';
 import { supabase } from '@/lib/supabase';
 import { strings } from '@/strings';
 import { colors, radius, size, spacing, text } from '@/theme';
 
 const s = strings.tables;
-const PAID = 'paid' satisfies OrderStatus;
 const SKELETON_COUNT = 8;
 
 type DiningTable = Row<'dining_tables'>;
-type OpenInfo = { status: OrderStatus; count: number; latestAt: string };
+type OpenInfo = { status: OrderStatus; count: number; latestAt: string; ready: boolean };
 type Data = { tables: DiningTable[]; open: Record<number, OpenInfo> };
 
 function greeting(now = new Date()): string {
@@ -39,9 +40,10 @@ async function fetchTables(): Promise<Data> {
   const open: Record<number, OpenInfo> = {};
   for (const o of ordersRes.data) {
     const cur = open[o.table_id];
-    if (!cur) open[o.table_id] = { status: o.status, count: 1, latestAt: o.created_at };
+    if (!cur) open[o.table_id] = { status: o.status, count: 1, latestAt: o.created_at, ready: o.status === READY };
     else {
       cur.count += 1;
+      if (o.status === READY) cur.ready = true;
       if (o.created_at > cur.latestAt) {
         cur.status = o.status;
         cur.latestAt = o.created_at;
@@ -54,6 +56,7 @@ async function fetchTables(): Promise<Data> {
 export default function TablesScreen() {
   const { profile, signOut } = useAuth();
   const { clear } = useDraft();
+  const live = useLive();
   const [data, setData] = useState<Data | null>(null);
   const [firstError, setFirstError] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
@@ -79,6 +82,7 @@ export default function TablesScreen() {
       load();
     }, [load]),
   );
+  useLiveRefetch(load);
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -99,6 +103,7 @@ export default function TablesScreen() {
       onConfirm: async () => {
         setSigningOut(true);
         clear();
+        live.stop();
         await signOut();
         router.replace('/login');
       },
@@ -115,6 +120,11 @@ export default function TablesScreen() {
         <Text style={[text('sm'), styles.summary]}>
           {openCount === 0 ? s.allFree(tables.length) : s.summary(tables.length - openCount, openCount)}
         </Text>
+      ) : null}
+      {live.paused ? (
+        <View style={styles.banner}>
+          <Banner tone="info" body={strings.live.paused} />
+        </View>
       ) : null}
       {refreshError ? (
         <View style={styles.banner}>
@@ -190,6 +200,7 @@ export default function TablesScreen() {
                 seats={item.seats}
                 openStatus={open?.status ?? null}
                 openCount={open?.count ?? 0}
+                ready={open?.ready ?? false}
                 onPress={() =>
                   router.push({
                     pathname: '/table/[tableId]/menu',

@@ -4,6 +4,8 @@ import { StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { IconName } from '@/components/Button';
+import { LiveOrdersProvider, useLive } from '@/lib/live';
+import { useOrientationLock } from '@/lib/orientation';
 import { strings } from '@/strings';
 import { colors, radius, shadow, size, spacing, text, touch } from '@/theme';
 
@@ -19,8 +21,18 @@ function TabIcon({ focused, icon, activeIcon }: { focused: boolean; icon: IconNa
   );
 }
 
-export default function WaiterTabs() {
+export default function WaiterHome() {
+  useOrientationLock('portrait');
+  return (
+    <LiveOrdersProvider>
+      <WaiterTabs />
+    </LiveOrdersProvider>
+  );
+}
+
+function WaiterTabs() {
   const insets = useSafeAreaInsets();
+  const { readyCount } = useLive();
   return (
     <Tabs
       screenOptions={{
@@ -51,6 +63,9 @@ export default function WaiterTabs() {
         name="orders"
         options={{
           title: strings.tabs.myOrders,
+          tabBarBadge: readyCount > 0 ? readyCount : undefined,
+          tabBarBadgeStyle: { backgroundColor: colors.success, color: colors.textOnPrimary, ...text('xs', 'semibold') },
+          tabBarAccessibilityLabel: readyCount > 0 ? strings.tabs.a11yMyOrdersReady(readyCount) : undefined,
           tabBarIcon: ({ focused }) => <TabIcon focused={focused} icon="receipt-outline" activeIcon="receipt" />,
         }}
       />

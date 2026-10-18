@@ -7,30 +7,34 @@ import { strings } from '@/strings';
 import { colors, lineHeight, radius, size, spacing, text } from '@/theme';
 import { Button, type IconName } from './Button';
 
+type BannerTone = 'error' | 'info' | 'success';
+
 type BannerProps = {
-  tone?: 'error' | 'info';
+  tone?: BannerTone;
   title?: string;
   body: string;
   actionLabel?: string;
   onAction?: () => void;
+  style?: StyleProp<ViewStyle>;
 };
 
-export function Banner({ tone = 'error', title, body, actionLabel, onAction }: BannerProps) {
-  const isError = tone === 'error';
+const bannerTones: Record<BannerTone, { bg: string; icon: IconName; iconColor: string; title: string }> = {
+  error: { bg: colors.dangerSoft, icon: 'alert-circle', iconColor: colors.danger, title: colors.danger },
+  info: { bg: colors.surfaceMuted, icon: 'information-circle-outline', iconColor: colors.textMuted, title: colors.text },
+  success: { bg: colors.successSoft, icon: 'checkmark-circle', iconColor: colors.success, title: colors.success },
+};
+
+export function Banner({ tone = 'error', title, body, actionLabel, onAction, style }: BannerProps) {
+  const t = bannerTones[tone];
   return (
     <View
-      accessibilityRole={isError ? 'alert' : undefined}
+      accessibilityRole={tone === 'info' ? undefined : 'alert'}
       accessibilityLiveRegion="polite"
-      style={[styles.banner, { backgroundColor: isError ? colors.dangerSoft : colors.surfaceMuted }]}
+      style={[styles.banner, { backgroundColor: t.bg }, style]}
     >
-      <Ionicons
-        name={isError ? 'alert-circle' : 'information-circle-outline'}
-        size={size.icon}
-        color={isError ? colors.danger : colors.textMuted}
-        style={styles.bannerIcon}
-      />
+      <Ionicons name={t.icon} size={size.icon} color={t.iconColor} style={styles.bannerIcon} />
       <View style={styles.bannerText}>
-        {title ? <Text style={[text('sm', 'semibold'), { color: colors.danger }]}>{title}</Text> : null}
+        {title ? <Text style={[text('sm', 'semibold'), { color: t.title }]}>{title}</Text> : null}
         <Text style={[text('sm'), { color: colors.text }]}>{body}</Text>
       </View>
       {actionLabel && onAction ? (

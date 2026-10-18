@@ -376,6 +376,8 @@ One order in My orders.
 - Footer (`spacing[3]` below lines): `"Total"` `fontSize.md` `colors.textMuted` left,
   `formatEtb(total)` `fontSize.lg` `fontWeight.bold` `colors.text` right.
 - Not tappable in this slice (served/paid actions come later). No pressed state.
+- **Slice 3:** ready / served / paid variants and the action button. See
+  "OrderCard — live variants" below.
 
 ## Banner
 
@@ -388,6 +390,8 @@ Inline message inside a screen (not a toast).
   `fontWeight.semibold` `colors.danger`.
 - `info`: bg `colors.surfaceMuted`, icon `information-circle-outline`
   `colors.textMuted`, text `colors.text`.
+- `success` (slice 3): bg `colors.successSoft`, icon `checkmark-circle`
+  `colors.success`, text `colors.text`. `accessibilityRole="alert"` too.
 - Optional action at the end: `ghost` button (not full width), e.g. `"Retry"`.
 - `accessibilityRole="alert"` for `error` (screen reader announces it).
 
@@ -430,5 +434,187 @@ Router `Tabs` with these options (no extra package).
 - Tabs: `"Tables"` icon `grid-outline` (active `grid`); `"My orders"` icon
   `receipt-outline` (active `receipt`).
 - My orders tab shows a count bubble when the waiter has orders with status `ready`
-  — **slice 3** (needs live updates). Not in this slice.
+  (slice 3). Spec: `screens/03-waiter-live.md` → Tab bar.
 - Hidden on Menu and Cart (they are pushed stack screens above the tabs).
+
+---
+
+# Slice 3 components
+
+Kitchen board (`screens/03-kitchen.md`) and waiter live updates
+(`screens/03-waiter-live.md`). Same global rules as above. The kitchen uses bigger type
+because it is read from a metre away.
+
+## StatusSolidButton (kitchen action)
+
+A big button that moves an order into a status. It is coloured with that status's solid
+colour, so the button matches the lane the ticket is about to join.
+
+- Height `touch.kitchenAction` (72), full width, radius `radius.lg`, `shadows.md`.
+- bg `statusSolid[target].bg`; pressed bg `statusSolid[target].pressed`. Label and icon
+  `statusSolid[target].fg`.
+- Leading icon `size.iconLg` + `spacing[3]` + label `fontSize.xl` / `lineHeight.xl`
+  `fontWeight.bold`.
+- **Loading:** `ActivityIndicator` (`size="small"`, fg colour) + `spacing[3]` + loading
+  label. Same size and colours, not pressable.
+- **Disabled** (rare: only while that ticket's own request is in flight, which is
+  loading): no separate look.
+- Contrast: white on every `statusSolid` bg and pressed shade is ≥ 6.56:1.
+
+## HighlightRing
+
+The "look here" ring for something that just arrived (a new kitchen ticket, or a waiter's
+order that just turned ready).
+
+- Absolutely positioned over its child: `top/left/right/bottom: -size.ringWidth`,
+  `borderWidth: size.ringWidth`, `borderRadius: radius.lg + size.ringWidth`,
+  `pointerEvents="none"`.
+- Colour given by the screen: kitchen `statusColors.sent.fg`, waiter `colors.success`.
+- Animation (`Animated`, native driver, on `opacity`): 1 for `timing.newTicketHoldMs`,
+  then to 0 over `timing.newTicketFadeMs`, then unmount. Starts on mount.
+- The parent must leave `size.ringWidth` of room around the child (lane / list padding
+  does).
+
+## ConnectionPill (kitchen top bar)
+
+- Row, height `spacing[10]` (40), padding horizontal `spacing[4]`, radius `radius.full`,
+  gap `spacing[2]`. Label `fontSize.md` / `lineHeight.md` `fontWeight.semibold`.
+- Four states (colours and labels): see `03-kitchen.md` → Connection states. Every
+  state has a word, never only a colour.
+- Leading: a dot (`spacing[2]` square, `radius.full`), an `ActivityIndicator`
+  `size="small"`, or an Ionicon `size.icon`, depending on the state.
+- Not tappable. `accessibilityLabel` `"Connection: Live"`. Use
+  `accessibilityLiveRegion="polite"` so a change is announced.
+
+## KitchenLane
+
+One column of the board.
+
+- Container: bg `colors.surfaceMuted`, radius `radius.xl`, `overflow: 'hidden'`,
+  top border `size.laneEdge` (6) in `statusColors[status].fg`.
+- **Header:** padding horizontal `spacing[4]`, vertical `spacing[3]`, row,
+  space-between.
+  - Left: icon `size.iconLg` + `spacing[2]` + label `fontSize.xl` / `lineHeight.xl`
+    `fontWeight.bold`, both `statusColors[status].fg` (on the cream100 lane fill: blue
+    7.09, amber 5.80, green 5.60).
+  - Right: count chip. Min width and height `spacing[10]`, padding horizontal
+    `spacing[3]`, radius `radius.full`, bg `statusColors[status].bg`, number
+    `fontSize.lg` / `lineHeight.lg` bold `statusColors[status].fg`, tabular nums,
+    centred.
+  - The header is one accessible element: `"New, 2 orders"`.
+- **Body:** `FlatList`, `contentContainerStyle` padding horizontal `spacing[3]`, top
+  `spacing[1]`, bottom `spacing[3]`, gap `spacing[3]`. The padding also gives
+  `HighlightRing` its room.
+- **Lane empty:** the text given by the screen, `fontSize.lg` / `lineHeight.lg`
+  `colors.textMuted`, centred, padding `spacing[6]`.
+
+## KitchenTicket
+
+A ticket in the New or Preparing lane.
+
+```
+┌──────────────────────────────────────┐
+│ Table 4  [NEW]            ⏱  4 min   │  band: statusColors[status].bg
+│ ✈ New                                │
+├──────────────────────────────────────┤
+│ #12 · Hana Tesfaye · 14:01           │  meta
+│ ──────────────────────────────────── │
+│ 2×  Beef Tibs                        │
+│     ┃ “no onion”                     │  note block
+│ 1×  Macchiato                        │
+│ [ 🔥       Start preparing          ] │  StatusSolidButton
+└──────────────────────────────────────┘
+```
+
+- **Container:** bg `colors.surface`, radius `radius.lg`, border 1 `colors.border`,
+  `shadows.md`, `overflow: 'hidden'` (wrap it in a View that does **not** clip, so
+  `HighlightRing` can sit outside it).
+  - **Late:** border 3 `colors.overdue`.
+- **Header band:** bg `statusColors[status].bg`, padding vertical `spacing[3]`,
+  horizontal `spacing[5]`. Row, space-between, items start.
+  - Left column:
+    - Row: `"Table 4"` `fontSize['4xl']` / `lineHeight['4xl']` `fontWeight.bold`
+      `colors.text` (13.9:1 on blue50, 14.3:1 on amber50), tabular nums. Optional `"NEW"`
+      tag after it (spec in `03-kitchen.md`).
+    - Status word: icon `size.icon` + `spacing[1]` + `"New"` / `"Preparing"`
+      `fontSize.md` / `lineHeight.md` `fontWeight.semibold` `statusColors[status].fg`.
+  - Right: **timer**, vertically centred on the table number.
+    - Normal: icon `time-outline` `size.iconLg` `colors.text` + `spacing[2]` + `"4 min"`
+      `fontSize['2xl']` / `lineHeight['2xl']` `fontWeight.bold` `colors.text`, tabular
+      nums.
+    - Late: a chip, bg `colors.overdue`, padding `spacing[1]` × `spacing[3]`, radius
+      `radius.full`, icon `alert-circle` + `"12 min · Late"`, same type,
+      `colors.textOnOverdue`.
+- **Meta:** padding horizontal `spacing[5]`, top `spacing[3]`. `"#12 · Hana Tesfaye ·
+  14:01"` `fontSize.lg` / `lineHeight.lg` `colors.textMuted`, tabular nums,
+  `numberOfLines={1}`. The time is when the order was sent (`HH:mm`).
+- **Divider:** 1 `colors.border`, margin `spacing[3]` vertical, `spacing[5]` horizontal.
+- **Items:** padding horizontal `spacing[5]`, gap `spacing[3]`. Each line is a row:
+  - Quantity `"2×"` `fontSize['2xl']` / `lineHeight['2xl']` `fontWeight.bold`
+    `colors.text`, min width `spacing[12]`, tabular nums.
+  - `spacing[2]`, then a column, flex 1:
+    - Name `fontSize['2xl']` / `lineHeight['2xl']` `fontWeight.semibold` `colors.text`.
+      It wraps and is never truncated.
+    - Note, if any: `spacing[1]` below. A block with bg `colors.surfaceMuted`, left
+      border 4 `colors.borderControl`, radius `radius.sm`, padding `spacing[2]` ×
+      `spacing[3]`. Text `"“no onion”"` `fontSize.xl` / `lineHeight.xl`
+      `fontWeight.medium` `colors.text`.
+  - Every line is shown (no "+n more").
+- **Error** (action failed): `Banner` `error`, margin horizontal `spacing[5]`, top
+  `spacing[4]`.
+- **Action:** `StatusSolidButton`, margin `spacing[4]` top, `spacing[5]` sides and
+  bottom.
+- **Enter / leave:** fade + slide `timing.enterMs` (see `03-kitchen.md`).
+
+## ReadyTicket
+
+A compact ticket in the Ready lane. It has no action (the waiter picks it up).
+
+- Container: bg `colors.surface`, radius `radius.lg`, border 2 `statusColors.ready.fg`,
+  `shadows.sm`, padding `spacing[4]`, gap `spacing[1]`.
+- Row 1 (space-between, centred): `"Table 6"` `fontSize['2xl']` / `lineHeight['2xl']`
+  bold `colors.text`; `StatusBadge` `ready` `large`.
+- Row 2: `"3 items · Hana Tesfaye"` `fontSize.lg` / `lineHeight.lg`
+  `colors.textMuted`, `numberOfLines={1}`.
+- Row 3: `"Waiting for pickup"` `fontSize.md` / `lineHeight.md` `fontWeight.medium`
+  `colors.success`.
+- Leaves with a fade (`timing.enterMs`) when the order becomes `served`.
+
+## OrderCard — live variants (waiter, slice 3)
+
+Adds to the OrderCard above. The rules per status are in `03-waiter-live.md`.
+
+- **ready:** border 2 `colors.success`. **Pickup band** as the card's first child,
+  bleeding to the card edges: margin `-spacing[4]` top and sides, `spacing[3]` bottom,
+  top corners `radius.lg - 2` (inside the border). bg `colors.successSoft`, padding
+  `spacing[2]` × `spacing[4]`, row: `checkmark-circle` `size.icon` `colors.success` +
+  `spacing[2]` + `"Ready — pick up"` `fontSize.md` bold `colors.success`. It can carry a
+  `HighlightRing` in `colors.success`.
+- **served:** unchanged look.
+- **paid:** bg `colors.surfaceMuted`, `shadows.none`, border 1 `colors.border`. A
+  `"Paid with Telebirr"` line under the total.
+- **Action** (ready → `"Mark served"`, served → `"Mark paid"`): a `primary` `Button`,
+  full width, `spacing[4]` below the total row. An error `Banner` goes `spacing[3]`
+  above it when the action failed.
+
+## TableCard — ready variant (waiter, slice 3)
+
+bg `colors.successSoft`, border 2 `colors.success`, bottom `StatusBadge` `ready`.
+Pressed: border 3. See `03-waiter-live.md`.
+
+## PaymentOption
+
+One row in the PaymentSheet (`03-waiter-live.md`).
+
+- `Pressable`, min height `spacing[16]` (64), radius `radius.lg`, padding horizontal
+  `spacing[4]`, row, centred, gap `spacing[3]`.
+- Default: bg `colors.surface`, border 1.5 `colors.borderControl`. Pressed: bg
+  `colors.surfaceMuted`.
+- **Selected:** bg `colors.primarySoft`, border 2 `colors.primary`.
+- Left: icon circle `size.tileSm` (48), `radius.full`, bg `colors.surfaceMuted`
+  (selected: `colors.surface`), icon `size.iconLg` `colors.text`.
+- Label `fontSize.lg` / `lineHeight.lg` `fontWeight.semibold` `colors.text`, flex 1.
+- Right: `radio-button-off` `size.iconLg` `colors.textMuted`. Selected:
+  `radio-button-on` `colors.primary`.
+- Disabled while saving: opacity stays, not pressable.
+- a11y: role `radio`, `accessibilityState={{ checked, disabled }}`, label = the label.

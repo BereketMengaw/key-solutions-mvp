@@ -2,19 +2,19 @@ import type { Session } from '@supabase/supabase-js';
 import type { Href } from 'expo-router';
 import { createContext, useCallback, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
 
-import type { Role } from '@shared/constants';
 import type { Tables } from '@shared/database.types';
+import { COOK, WAITER } from './names';
 import { supabase } from './supabase';
 
 export type Profile = Pick<Tables<'profiles'>, 'full_name' | 'role'>;
 
 export type ProfileResult = { ok: true; profile: Profile | null } | { ok: false };
 
-const WAITER = 'waiter' satisfies Role;
-
-/** Where a signed-in user belongs: waiters get the order screens, everyone else a notice. */
+/** Where a signed-in user belongs: waiters get the order screens, cooks the kitchen board, everyone else a notice. */
 export function homeFor(profile: Profile | null): Href {
-  return profile?.role === WAITER ? '/tables' : '/wrong-role';
+  if (profile?.role === WAITER) return '/tables';
+  if (profile?.role === COOK) return '/kitchen';
+  return '/wrong-role';
 }
 
 type AuthContextValue = {

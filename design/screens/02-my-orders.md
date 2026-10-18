@@ -1,5 +1,8 @@
 # 02 — My orders
 
+> **Slice 3:** live updates, the "Ready — pick up" highlight, Mark served / Mark paid
+> and the payment sheet are in `03-waiter-live.md`, which overrides this file where they differ.
+
 Route: waiter tabs → **My orders**.
 
 ## Purpose

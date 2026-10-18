@@ -39,6 +39,7 @@ export default function RootLayout() {
             <Stack.Screen name="login" options={{ gestureEnabled: false, animation: 'fade' }} />
             <Stack.Screen name="wrong-role" options={{ gestureEnabled: false, animation: 'fade' }} />
             <Stack.Screen name="(waiter)" options={{ gestureEnabled: false, animation: 'fade' }} />
+            <Stack.Screen name="kitchen" options={{ gestureEnabled: false, animation: 'fade' }} />
             <Stack.Screen name="table/[tableId]/menu" />
             <Stack.Screen name="table/[tableId]/cart" />
           </Stack>

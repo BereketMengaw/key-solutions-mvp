@@ -32,6 +32,10 @@ export function nextOrderStatus(status: OrderStatus): OrderStatus | null {
 export const STOCK_REASONS = ['order', 'restock', 'adjustment'] as const;
 export type StockReason = (typeof STOCK_REASONS)[number];
 
+/** How a paid order was settled. A label only; no real payment is taken. */
+export const PAYMENT_METHODS = ['cash', 'telebirr', 'cbe_birr'] as const;
+export type PaymentMethod = (typeof PAYMENT_METHODS)[number];
+
 export const INGREDIENT_UNITS = ['kg', 'L', 'pcs'] as const;
 export type IngredientUnit = (typeof INGREDIENT_UNITS)[number];
 
@@ -40,6 +44,8 @@ type Same<A, B> = [A] extends [B] ? ([B] extends [A] ? true : false) : false;
 const rolesMatchDb: Same<Role, DbEnums['app_role']> = true;
 const statusesMatchDb: Same<OrderStatus, DbEnums['order_status']> = true;
 const reasonsMatchDb: Same<StockReason, DbEnums['stock_reason']> = true;
+const paymentMethodsMatchDb: Same<PaymentMethod, DbEnums['payment_method']> = true;
 void rolesMatchDb;
 void statusesMatchDb;
 void reasonsMatchDb;
+void paymentMethodsMatchDb;

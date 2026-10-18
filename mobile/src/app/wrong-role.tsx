@@ -20,7 +20,7 @@ const kitchen: Variant = { icon: 'flame-outline', title: s.kitchenTitle, body: s
 const website: Variant = { icon: 'stats-chart-outline', title: s.websiteTitle, body: s.websiteBody };
 const noRole: Variant = { icon: 'person-circle-outline', title: s.noRoleTitle, body: s.noRoleBody };
 
-// A waiter never lands here; if one somehow does, the generic notice is the safe choice.
+// Waiters and cooks have their own screens; if one somehow lands here, these are the safe choices.
 const variantByRole: Record<Role, Variant> = { cook: kitchen, manager: website, owner: website, waiter: noRole };
 
 export default function WrongRole() {
@@ -35,7 +35,8 @@ export default function WrongRole() {
     return () => sub.remove();
   }, []);
 
-  const variant = profile ? variantByRole[profile.role] : noRole;
+  // A profile whose role was removed (role = null) gets the "not set up" notice.
+  const variant = profile?.role ? variantByRole[profile.role] : noRole;
   const name = profile?.full_name.trim() ?? '';
 
   const onSignOut = async () => {
@@ -59,7 +60,7 @@ export default function WrongRole() {
           <Text numberOfLines={1} style={[text('md', 'semibold'), { color: colors.text }]}>
             {name || email}
           </Text>
-          {profile ? (
+          {profile?.role ? (
             <Text style={[text('sm'), { color: colors.textMuted }]}>{strings.roles[profile.role]}</Text>
           ) : null}
         </View>

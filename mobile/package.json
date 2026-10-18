@@ -6,12 +6,14 @@
     "@expo-google-fonts/noto-sans": "^0.4.2",
     "@expo/vector-icons": "^15.0.2",
     "@supabase/supabase-js": "^2.118.0",
-    "eslint-config-expo": "~58.0.4",
     "expo": "~58.0.14",
     "expo-constants": "~58.0.12",
+    "expo-crypto": "~58.0.7",
     "expo-font": "~58.0.8",
+    "expo-keep-awake": "~58.0.3",
     "expo-linking": "~58.0.13",
     "expo-router": "~58.0.23",
+    "expo-screen-orientation": "~58.0.3",
     "expo-secure-store": "~58.0.2",
     "expo-splash-screen": "~58.0.10",
     "expo-status-bar": "~58.0.3",
@@ -26,6 +28,7 @@
   "devDependencies": {
     "@types/react": "~19.3.0",
     "eslint": "^9.39.5",
+    "eslint-config-expo": "~58.0.4",
     "typescript": "~6.0.3"
   },
   "scripts": {

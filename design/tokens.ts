@@ -40,17 +40,22 @@ export const palette = {
   berbere600: '#B23A1A',
   berbere700: '#8E2C12',
 
-  // Status hues
+  // Status hues (800s are the pressed shade of a solid status button)
   blue50: '#E6EEF8',
   blue700: '#1F4E8C',
+  blue800: '#173D6E',
   amber50: '#FDEFD3',
   amber700: '#8A4B00',
+  amber800: '#6E3B00',
   green50: '#DFF3E4',
   green700: '#1B6B35',
+  green800: '#145229',
   stone100: '#ECE7E1',
   stone700: '#4A4039',
+  stone800: '#352D28',
   teal50: '#DDF1EF',
   teal700: '#155E57',
+  teal800: '#0F4A44',
   red50: '#FBE3E0',
   red700: '#A3221A',
 
@@ -96,8 +101,20 @@ const light = {
   dangerSoft: palette.red50,
   success: palette.green700,
   successSoft: palette.green50,
+  /** Connection trouble ("Reconnecting…"): a state, not an error yet. */
+  warning: palette.amber700,
+  warningSoft: palette.amber50,
+
+  // Kitchen: a ticket waiting longer than timing.overdueAfterMinutes.
+  // Always shown with the word "Late", never by color alone.
+  overdue: palette.red700,
+  overdueSoft: palette.red50,
+  textOnOverdue: palette.white,
 
   focusRing: palette.berbere600,
+
+  /** Dim layer behind a bottom sheet (coffee900 at 45%). Decorative, no text on it. */
+  scrim: 'rgba(43, 29, 22, 0.45)',
 } as const;
 
 export type ThemeColors = { readonly [K in keyof typeof light]: string };
@@ -131,6 +148,22 @@ export const statusColors = {
 } as const satisfies Record<OrderStatus | 'lowStock', ColorPair>;
 
 export type StatusColorKey = keyof typeof statusColors;
+
+/**
+ * Solid status colors: the button that moves an order INTO a status uses that
+ * status's solid color (kitchen "Start preparing" = preparing, "Mark ready" =
+ * ready), so the button matches the lane the ticket is about to join.
+ * fg on bg and fg on pressed pass AA (lowest: white on green700, 6.56:1).
+ */
+export type SolidColor = { readonly bg: string; readonly pressed: string; readonly fg: string };
+
+export const statusSolid = {
+  sent: { bg: palette.blue700, pressed: palette.blue800, fg: palette.white },
+  preparing: { bg: palette.amber700, pressed: palette.amber800, fg: palette.white },
+  ready: { bg: palette.green700, pressed: palette.green800, fg: palette.white },
+  served: { bg: palette.stone700, pressed: palette.stone800, fg: palette.white },
+  paid: { bg: palette.teal700, pressed: palette.teal800, fg: palette.white },
+} as const satisfies Record<OrderStatus, SolidColor>;
 
 /* ------------------------------------------------------------------ */
 /* Category tints — the item tile fallback when a menu item has no      */
@@ -200,6 +233,8 @@ export const fontSize = {
   xl: 22,
   '2xl': 28,
   '3xl': 36,
+  /** Kitchen ticket table number: read from a metre away. */
+  '4xl': 48,
 } as const;
 
 export const lineHeight = {
@@ -210,6 +245,7 @@ export const lineHeight = {
   xl: 34,
   '2xl': 42,
   '3xl': 52,
+  '4xl': 64,
 } as const satisfies { readonly [K in keyof typeof fontSize]: number };
 
 /** Strings because React Native's fontWeight only accepts strings. */
@@ -270,6 +306,8 @@ export const touch = {
   minTarget: 48,
   /** Height of the one primary action on a screen (Sign in, Send to kitchen, cart bar). */
   primaryAction: 56,
+  /** Kitchen ticket action (Start preparing / Mark ready): hit with a wet hand. */
+  kitchenAction: 72,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -293,6 +331,43 @@ export const size = {
   tableCard: 136,
   /** Max width of centered body copy (empty states, confirmations). */
   textBlock: 300,
+  /** Highlight ring around a newly arrived kitchen ticket. */
+  ringWidth: 4,
+  /** Colored top edge of a kitchen lane. */
+  laneEdge: 6,
+} as const;
+
+/* ------------------------------------------------------------------ */
+/* Breakpoints — screen width in dp/px (useWindowDimensions().width).   */
+/* ------------------------------------------------------------------ */
+
+export const breakpoints = {
+  /** Kitchen board: New | Preparing | Ready lanes side by side (landscape tablet). */
+  kitchenThreeLanes: 1100,
+  /** Kitchen board: New | Preparing side by side, Ready as a strip on top. */
+  kitchenTwoLanes: 720,
+} as const;
+
+/* ------------------------------------------------------------------ */
+/* Timing — durations (ms) and thresholds shared by specs.              */
+/* ------------------------------------------------------------------ */
+
+export const timing = {
+  /** A kitchen ticket turns "Late" this many minutes after it was sent. */
+  overdueAfterMinutes: 10,
+  /** How often the ticket timers and the clock re-render. */
+  timerTickMs: 10_000,
+  /** New-ticket highlight: fully on for this long, then fades. */
+  newTicketHoldMs: 6_000,
+  newTicketFadeMs: 2_000,
+  /** Ticket / card enter animation. */
+  enterMs: 250,
+  /** Wait this long in a broken connection before showing the banner (avoids flicker). */
+  offlineBannerDelayMs: 5_000,
+  /** "Back online" banner stays this long. */
+  backOnlineMs: 3_000,
+  /** Waiter phone buzz when one of their orders turns Ready. */
+  readyVibrateMs: 400,
 } as const;
 
 export const tokens = {
@@ -300,6 +375,7 @@ export const tokens = {
   themes,
   colors,
   statusColors,
+  statusSolid,
   categoryTints,
   spacing,
   radius,
@@ -310,6 +386,8 @@ export const tokens = {
   shadows,
   touch,
   size,
+  breakpoints,
+  timing,
 } as const;
 
 export default tokens;

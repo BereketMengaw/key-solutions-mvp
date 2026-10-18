@@ -23,6 +23,10 @@ brand color. Light theme only for the demo.
 | Primary pressed | `colors.primaryPressed` | `#8E2C12` |
 | Primary soft (selected) | `colors.primarySoft` | `#FBEDE7` |
 | Text on primary | `colors.textOnPrimary` | `#FFFFFF` |
+| Warning (reconnecting) / soft | `colors.warning` / `warningSoft` | `#8A4B00` / `#FDEFD3` |
+| Overdue ticket ("Late") / soft | `colors.overdue` / `overdueSoft` | `#A3221A` / `#FBE3E0` |
+| Text on overdue | `colors.textOnOverdue` | `#FFFFFF` |
+| Sheet backdrop | `colors.scrim` | `rgba(43, 29, 22, 0.45)` |
 
 ### Status colors (fixed)
 
@@ -35,7 +39,26 @@ brand color. Light theme only for the demo.
 | paid | `#155E57` | `#DDF1EF` |
 | lowStock | `#A3221A` | `#FBE3E0` |
 
-`statusColors` is checked against `OrderStatus` from `shared/constants.ts` with
+### Solid status colors (slice 3)
+
+`statusSolid[status]` is the solid version of each status. Use it for a button that
+**moves an order into** that status. On the kitchen, "Start preparing" is
+`statusSolid.preparing` and "Mark ready" is `statusSolid.ready`, so the button matches
+the lane the ticket is about to join. White text on every bg and pressed shade.
+
+| Status | bg | pressed | white on bg | white on pressed |
+|---|---|---|---|---|
+| sent | `#1F4E8C` | `#173D6E` | 8.31 | 10.89 |
+| preparing | `#8A4B00` | `#6E3B00` | 6.80 | 9.18 |
+| ready | `#1B6B35` | `#145229` | 6.56 | 9.26 |
+| served | `#4A4039` | `#352D28` | 10.08 | 13.48 |
+| paid | `#155E57` | `#0F4A44` | 7.58 | 10.08 |
+
+The waiter's Mark served / Mark paid buttons stay `primary`: on the phone, berbere is
+always "the action". The kitchen tablet has no berbere buttons, so the red of a **Late**
+ticket never gets confused with an action.
+
+`statusColors` and `statusSolid` are checked against `OrderStatus` from `shared/constants.ts` with
 `satisfies` (a type-only import, erased at runtime). Adding or removing an order status
 without updating the colors fails every app's typecheck.
 
@@ -65,6 +88,15 @@ three text colors on every surface pass WCAG AA (4.5:1). Lowest pair: `textSubtl
 background 3.49, surfaceMuted 3.20. `border`/`borderStrong` are decorative only (card
 edges), never the only edge of an input. If you add a color, check it before using it.
 
+Slice 3 checks (all WCAG AA). Kitchen lane headers on the cream100 lane fill: blue700
+7.09, amber700 5.80, green700 5.60. Ticket band text: `text` on blue50 13.91, on amber50
+14.31. `textMuted` on blue50 5.61, `textSubtle` on blue50 4.85. Late chip: white on
+`overdue` 7.50. Late border and the new-ticket ring (non-text, 3:1): `overdue` on surface
+7.50, blue700 on surface 8.31. Connection pill: `warning` on `warningSoft` 5.98,
+`success` on `successSoft` 5.65, `danger` on `dangerSoft` 6.13. Tab badge: white on
+`success` 6.56. Paid line: teal700 on `surfaceMuted` 6.47. Splash / icon dot:
+`primarySoft` on `primary` 5.23.
+
 ### Dark mode later
 
 Screens use `colors.*` (semantic), never `palette.*` (raw). To add dark mode, add a
@@ -81,13 +113,23 @@ which theme `colors` points to.
   also often longer, so let text wrap.
 - `fontWeight` values are strings because React Native requires that.
 
+## Kitchen sizes
+
+The kitchen tablet is read from about a metre away. Its tickets use
+`fontSize['4xl']` (48) for the table number, `fontSize['2xl']` (28) for items and the
+timer, and `fontSize.xl` (22) for notes. The action buttons are `touch.kitchenAction`
+(72) tall. Layout switches at `breakpoints.kitchenThreeLanes` (1100) and
+`breakpoints.kitchenTwoLanes` (720). Timer thresholds and animation durations live in
+`timing` (e.g. `timing.overdueAfterMinutes` = 10).
+
 ## Touch
 
 Anything tappable is at least `touch.minTarget` (48) high and wide. The one primary action
 on a screen (Sign in, Send to kitchen, cart bar) is `touch.primaryAction` (56) high.
 Icon and tile sizes live in `size`.
 
-Component and screen specs: `components.md`, `screens/`.
+Component and screen specs: `components.md`, `screens/`. App icon, splash and favicon:
+`brand/` (see `brand/README.md`).
 
 ## Using the tokens
 

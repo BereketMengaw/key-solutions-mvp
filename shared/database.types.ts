@@ -187,9 +187,11 @@ export type Database = {
       }
       orders: {
         Row: {
+          client_ref: string | null
           created_at: string
           id: number
           paid_at: string | null
+          payment_method: Database["public"]["Enums"]["payment_method"] | null
           preparing_at: string | null
           ready_at: string | null
           served_at: string | null
@@ -199,9 +201,11 @@ export type Database = {
           waiter_id: string
         }
         Insert: {
+          client_ref?: string | null
           created_at?: string
           id?: never
           paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           preparing_at?: string | null
           ready_at?: string | null
           served_at?: string | null
@@ -211,9 +215,11 @@ export type Database = {
           waiter_id?: string
         }
         Update: {
+          client_ref?: string | null
           created_at?: string
           id?: never
           paid_at?: string | null
+          payment_method?: Database["public"]["Enums"]["payment_method"] | null
           preparing_at?: string | null
           ready_at?: string | null
           served_at?: string | null
@@ -244,19 +250,19 @@ export type Database = {
           created_at: string
           full_name: string
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["app_role"] | null
         }
         Insert: {
           created_at?: string
           full_name?: string
           id: string
-          role: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
         }
         Update: {
           created_at?: string
           full_name?: string
           id?: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role?: Database["public"]["Enums"]["app_role"] | null
         }
         Relationships: []
       }
@@ -355,13 +361,14 @@ export type Database = {
         Returns: Database["public"]["Enums"]["app_role"]
       }
       place_order: {
-        Args: { p_items: Json; p_table_id: number }
+        Args: { p_client_ref?: string; p_items: Json; p_table_id: number }
         Returns: number
       }
     }
     Enums: {
       app_role: "waiter" | "cook" | "manager" | "owner"
       order_status: "sent" | "preparing" | "ready" | "served" | "paid"
+      payment_method: "cash" | "telebirr" | "cbe_birr"
       stock_reason: "order" | "restock" | "adjustment"
     }
     CompositeTypes: {
@@ -495,6 +502,7 @@ export const Constants = {
     Enums: {
       app_role: ["waiter", "cook", "manager", "owner"],
       order_status: ["sent", "preparing", "ready", "served", "paid"],
+      payment_method: ["cash", "telebirr", "cbe_birr"],
       stock_reason: ["order", "restock", "adjustment"],
     },
   },

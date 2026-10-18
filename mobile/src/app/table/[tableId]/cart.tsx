@@ -1,6 +1,7 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { useEffect, useState } from 'react';
+import { randomUUID } from 'expo-crypto';
+import { useEffect, useRef, useState } from 'react';
 import {
   Animated,
   Keyboard,
@@ -13,7 +14,6 @@ import {
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import type { OrderStatus } from '@shared/constants';
 import { Button } from '@/components/Button';
 import { Banner, EmptyState } from '@/components/Feedback';
 import { ItemTile } from '@/components/ItemTile';
@@ -24,13 +24,13 @@ import { TopBarStack } from '@/components/TopBar';
 import { useAuth } from '@/lib/auth';
 import { NOTE_MAX_LENGTH, useDraft, type DraftLine } from '@/lib/draft';
 import { formatEtb } from '@/lib/format';
+import { SENT } from '@/lib/names';
 import { supabase } from '@/lib/supabase';
 import { strings } from '@/strings';
 import { colors, radius, shadow, size, spacing, tabularNums, text, touch } from '@/theme';
 
 const s = strings.cart;
 const NOTE_COUNT_FROM = 100;
-const SENT_STATUS = 'sent' satisfies OrderStatus;
 
 type SendError = { kind: 'network' } | { kind: 'session' } | { kind: 'other'; message: string };
 type SentOrder = { id: number; tableNumber: number; lines: DraftLine[]; total: number };
@@ -57,6 +57,9 @@ export default function CartScreen() {
   const [focusNote, setFocusNote] = useState<number | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [panelHeight, setPanelHeight] = useState(0);
+  // Idempotency key: made on the first Send tap, reused on every retry of the same order,
+  // so a retry after a timeout returns the order the first call created instead of a second one.
+  const clientRef = useRef<string | null>(null);
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
@@ -86,6 +89,8 @@ export default function CartScreen() {
 
   const edit = (fn: () => void) => {
     setSendError(null);
+    // The order changed, so it is a different order: the next Send gets a new key.
+    clientRef.current = null;
     fn();
   };
 
@@ -95,12 +100,18 @@ export default function CartScreen() {
     setSendError(null);
     setSending(true);
     const items = lines.map((l) => ({ menu_item_id: l.menuItemId, quantity: l.quantity, note: l.note.trim() }));
-    const { data, error, status } = await supabase.rpc('place_order', { p_table_id: tableId, p_items: items });
+    clientRef.current ??= randomUUID();
+    const { data, error, status } = await supabase.rpc('place_order', {
+      p_table_id: tableId,
+      p_items: items,
+      p_client_ref: clientRef.current,
+    });
     setSending(false);
     if (error || data === null) {
       setSendError(classify(status, error?.code ?? '', error?.message ?? ''));
       return;
     }
+    clientRef.current = null;
     setSent({ id: data, tableNumber, lines: lines.map((l) => ({ ...l, note: l.note.trim() })), total });
     draft.clear();
   };
@@ -318,7 +329,7 @@ function SentView({ order, onTables, onOrders }: { order: SentOrder; onTables: (
         </View>
 
         <View style={styles.sentStatus}>
-          <StatusBadge status={SENT_STATUS} />
+          <StatusBadge status={SENT} />
           <Text style={[text('sm'), { color: colors.textMuted }]}>{s.cookCanSee}</Text>
         </View>
       </View>

@@ -2,6 +2,7 @@ import { Ionicons } from '@expo/vector-icons';
 import { Pressable, StyleSheet, Text, View } from 'react-native';
 
 import type { OrderStatus } from '@shared/constants';
+import { READY } from '@/lib/names';
 import { strings } from '@/strings';
 import { colors, radius, shadow, size, spacing, tabularNums, text } from '@/theme';
 import { StatusBadge } from './StatusBadge';
@@ -12,24 +13,30 @@ type Props = {
   /** Most recent open order's status, or null when the table is free. */
   openStatus: OrderStatus | null;
   openCount: number;
+  /** Any open order on the table is ready: the card shows the pick-up look. */
+  ready: boolean;
   onPress: () => void;
 };
 
-export function TableCard({ number, seats, openStatus, openCount, onPress }: Props) {
+export function TableCard({ number, seats, openStatus, openCount, ready, onPress }: Props) {
   const open = openStatus !== null;
+  const badge = ready ? READY : openStatus;
   return (
     <Pressable
       onPress={onPress}
       accessibilityRole="button"
       accessibilityLabel={
-        open
-          ? strings.tables.a11yOpen(number, seats, strings.status[openStatus])
-          : strings.tables.a11yFree(number, seats)
+        ready
+          ? strings.tables.a11yReady(number, seats)
+          : open
+            ? strings.tables.a11yOpen(number, seats, strings.status[openStatus])
+            : strings.tables.a11yFree(number, seats)
       }
       style={({ pressed }) => [
         styles.card,
         open && styles.open,
-        pressed && (open ? styles.openPressed : styles.freePressed),
+        ready && styles.ready,
+        pressed && (ready ? styles.readyPressed : open ? styles.openPressed : styles.freePressed),
       ]}
     >
       <View style={styles.topRow}>
@@ -41,9 +48,9 @@ export function TableCard({ number, seats, openStatus, openCount, onPress }: Pro
       </View>
       <Text style={[text('3xl', 'bold'), tabularNums, { color: colors.text }]}>{number}</Text>
       <View style={styles.bottom}>
-        {open ? (
+        {badge ? (
           <>
-            <StatusBadge status={openStatus} />
+            <StatusBadge status={badge} />
             {openCount > 1 ? (
               <Text style={[text('xs'), { color: colors.textMuted }]}>
                 {strings.tables.more(openCount - 1)}
@@ -75,6 +82,8 @@ const styles = StyleSheet.create({
   open: { backgroundColor: colors.primarySoft, borderColor: colors.primary },
   freePressed: { backgroundColor: colors.surfaceMuted },
   openPressed: { borderWidth: 2, margin: -1 },
+  ready: { backgroundColor: colors.successSoft, borderColor: colors.success, borderWidth: 2, margin: -1 },
+  readyPressed: { borderWidth: 3, margin: -2 },
   topRow: { flexDirection: 'row', justifyContent: 'space-between', alignItems: 'center' },
   label: { color: colors.textMuted, letterSpacing: 1 },
   seats: { flexDirection: 'row', alignItems: 'center', gap: spacing[1] },

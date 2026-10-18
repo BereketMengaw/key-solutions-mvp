@@ -1,5 +1,8 @@
 # 02 — Tables
 
+> **Slice 3:** live updates and the ready TableCard variant are in `03-waiter-live.md`,
+> which overrides this file where they differ.
+
 Route: waiter tabs → **Tables** (the waiter's home after sign-in).
 
 ## Purpose

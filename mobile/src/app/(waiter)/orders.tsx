@@ -1,44 +1,60 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, LayoutAnimation, RefreshControl, StyleSheet, Text, View } from 'react-native';
 
-import type { OrderStatus } from '@shared/constants';
+import type { OrderStatus, PaymentMethod } from '@shared/constants';
 import { Banner, Bone, EmptyState, Skeleton } from '@/components/Feedback';
-import { OrderCard, type OrderCardLine } from '@/components/OrderCard';
+import { OrderCard, orderTotal, type OrderCardLine } from '@/components/OrderCard';
+import { PaymentSheet } from '@/components/PaymentSheet';
 import { TopBarHome } from '@/components/TopBar';
 import { useAuth } from '@/lib/auth';
-import { startOfTodayIso } from '@/lib/format';
+import { formatEtb, startOfTodayIso } from '@/lib/format';
+import { useLive, useLiveRefetch } from '@/lib/live';
+import { PAID, READY, SERVED } from '@/lib/names';
+import { advanceOrder } from '@/lib/orders';
 import { supabase } from '@/lib/supabase';
 import { strings } from '@/strings';
 import { colors, radius, spacing, tabularNums, text } from '@/theme';
 
 const s = strings.myOrders;
-const PAID = 'paid' satisfies OrderStatus;
 
 type Order = {
   id: number;
   status: OrderStatus;
   createdAt: string;
   tableNumber: number;
+  paymentMethod: PaymentMethod | null;
   lines: OrderCardLine[];
 };
+
+/** Ready first (oldest first), then open orders (newest first), then paid (newest first). */
+function sortOrders(orders: Order[]): Order[] {
+  const group = (o: Order) => (o.status === READY ? 0 : o.status === PAID ? 2 : 1);
+  return [...orders].sort((a, b) => {
+    const g = group(a) - group(b);
+    if (g !== 0) return g;
+    const byTime = a.createdAt.localeCompare(b.createdAt);
+    return group(a) === 0 ? byTime : -byTime;
+  });
+}
 
 async function fetchMyOrders(userId: string): Promise<Order[]> {
   const { data, error } = await supabase
     .from('orders')
     .select(
-      'id, status, created_at, dining_tables(number), order_items(id, quantity, note, unit_price_etb, menu_items(name))',
+      'id, status, payment_method, created_at, dining_tables(number), order_items(id, quantity, note, unit_price_etb, menu_items(name))',
     )
     .eq('waiter_id', userId)
     .gte('created_at', startOfTodayIso())
     .order('created_at', { ascending: false })
     .order('id', { referencedTable: 'order_items' });
   if (error) throw error;
-  return data.map((o) => ({
+  const orders = data.map((o) => ({
     id: o.id,
     status: o.status,
     createdAt: o.created_at,
     tableNumber: o.dining_tables.number,
+    paymentMethod: o.payment_method,
     lines: o.order_items.map((l) => ({
       id: l.id,
       quantity: l.quantity,
@@ -47,6 +63,7 @@ async function fetchMyOrders(userId: string): Promise<Order[]> {
       name: l.menu_items.name,
     })),
   }));
+  return sortOrders(orders);
 }
 
 export default function MyOrdersScreen() {
@@ -56,12 +73,19 @@ export default function MyOrdersScreen() {
   const [firstError, setFirstError] = useState(false);
   const [refreshError, setRefreshError] = useState(false);
   const [refreshing, setRefreshing] = useState(false);
+  const [busy, setBusy] = useState<number | null>(null);
+  const [actionError, setActionError] = useState<{ id: number; message: string } | null>(null);
+  const [paying, setPaying] = useState<Order | null>(null);
+  const [paySaving, setPaySaving] = useState(false);
+  const [payFailed, setPayFailed] = useState(false);
+  const live = useLive();
   const hasData = useRef(false);
 
   const load = useCallback(async () => {
     if (!userId) return;
     try {
       const next = await fetchMyOrders(userId);
+      if (hasData.current) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       hasData.current = true;
       setOrders(next);
       setFirstError(false);
@@ -77,6 +101,31 @@ export default function MyOrdersScreen() {
       load();
     }, [load]),
   );
+  useLiveRefetch(load);
+
+  /** Not optimistic: the card changes when the refetch after the update lands. */
+  const markServed = async (o: Order) => {
+    setActionError(null);
+    setBusy(o.id);
+    const result = await advanceOrder(o.id, READY, SERVED);
+    if (result.kind === 'failed') setActionError({ id: o.id, message: s.servedFailed(o.tableNumber) });
+    await load();
+    setBusy(null);
+  };
+
+  const confirmPaid = async (method: PaymentMethod) => {
+    if (!paying) return;
+    setPayFailed(false);
+    setPaySaving(true);
+    const result = await advanceOrder(paying.id, SERVED, PAID, method);
+    setPaySaving(false);
+    if (result.kind === 'failed') {
+      setPayFailed(true);
+      return;
+    }
+    setPaying(null);
+    await load();
+  };
 
   const onRefresh = async () => {
     setRefreshing(true);
@@ -86,6 +135,8 @@ export default function MyOrdersScreen() {
 
   const loading = !orders && !firstError;
   const openCount = orders?.filter((o) => o.status !== PAID).length ?? 0;
+  const readyCount = orders?.filter((o) => o.status === READY).length ?? 0;
+  const pausedBanner = live.paused ? <Banner tone="info" body={strings.live.paused} /> : null;
 
   const topBar = <TopBarHome eyebrow={s.eyebrow} title={s.title} />;
 
@@ -130,16 +181,23 @@ export default function MyOrdersScreen() {
         ListHeaderComponent={
           orders && orders.length > 0 ? (
             <View style={styles.header}>
+              {pausedBanner}
               <View style={styles.stats}>
                 <Stat label={s.statOrders} value={orders.length} />
                 <Stat label={s.statOpen} value={openCount} />
+                <Stat label={s.statReady} value={readyCount} highlight={readyCount > 0} />
               </View>
               {refreshError ? (
                 <Banner body={s.refreshError} actionLabel={strings.common.retry} onAction={load} />
               ) : null}
             </View>
-          ) : refreshError ? (
-            <Banner body={s.refreshError} actionLabel={strings.common.retry} onAction={load} />
+          ) : refreshError || live.paused ? (
+            <View style={styles.header}>
+              {pausedBanner}
+              {refreshError ? (
+                <Banner body={s.refreshError} actionLabel={strings.common.retry} onAction={load} />
+              ) : null}
+            </View>
           ) : undefined
         }
         ListEmptyComponent={
@@ -172,18 +230,41 @@ export default function MyOrdersScreen() {
             status={item.status}
             createdAt={item.createdAt}
             lines={item.lines}
+            paymentMethod={item.paymentMethod}
+            actionBusy={busy === item.id}
+            actionError={actionError?.id === item.id ? actionError.message : null}
+            onAction={
+              item.status === READY
+                ? () => markServed(item)
+                : item.status === SERVED
+                  ? () => {
+                      setActionError(null);
+                      setPayFailed(false);
+                      setPaying(item);
+                    }
+                  : undefined
+            }
+            highlighted={live.justReady.has(item.id) && item.status === READY}
+            onHighlightDone={() => live.clearJustReady(item.id)}
           />
         )}
+      />
+      <PaymentSheet
+        order={paying ? { id: paying.id, tableNumber: paying.tableNumber, total: formatEtb(orderTotal(paying.lines)) } : null}
+        saving={paySaving}
+        failed={payFailed}
+        onConfirm={confirmPaid}
+        onClose={() => setPaying(null)}
       />
     </View>
   );
 }
 
-function Stat({ label, value }: { label: string; value: number }) {
+function Stat({ label, value, highlight = false }: { label: string; value: number; highlight?: boolean }) {
   return (
     <View style={styles.stat}>
       <Text style={[text('xs', 'semibold'), { color: colors.textMuted }]}>{label}</Text>
-      <Text style={[text('xl', 'bold'), tabularNums, { color: colors.text }]}>{value}</Text>
+      <Text style={[text('xl', 'bold'), tabularNums, { color: highlight ? colors.success : colors.text }]}>{value}</Text>
     </View>
   );
 }
@@ -193,15 +274,14 @@ const styles = StyleSheet.create({
   flex: { flex: 1 },
   list: { paddingHorizontal: spacing[4], paddingTop: spacing[2], paddingBottom: spacing[6], gap: spacing[3] },
   header: { gap: spacing[3], marginBottom: spacing[1] },
-  stats: { flexDirection: 'row', gap: spacing[3] },
+  stats: { flexDirection: 'row', gap: spacing[2] },
   stat: {
     flex: 1,
     backgroundColor: colors.surface,
     borderRadius: radius.lg,
     borderWidth: 1,
     borderColor: colors.border,
-    paddingVertical: spacing[3],
-    paddingHorizontal: spacing[4],
+    padding: spacing[3],
   },
   statBone: { height: spacing[16] + spacing[2], borderRadius: radius.lg },
   skeletonCard: {

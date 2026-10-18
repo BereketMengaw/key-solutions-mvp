@@ -40,3 +40,8 @@ export function startOfTodayIso(): string {
   d.setHours(0, 0, 0, 0);
   return d.toISOString();
 }
+
+/** Whole minutes from `iso` to `now`; never negative (a tablet clock that runs behind shows 0). */
+export function minutesSince(iso: string, now: number): number {
+  return Math.max(0, Math.floor((now - new Date(iso).getTime()) / 60_000));
+}

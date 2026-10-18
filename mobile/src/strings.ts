@@ -1,5 +1,5 @@
 // Every UI string in the app. Amharic will be added as a second object with the same keys.
-import type { OrderStatus, Role } from '@shared/constants';
+import type { OrderStatus, PaymentMethod, Role } from '@shared/constants';
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
@@ -49,6 +49,74 @@ export const strings = {
   tabs: {
     tables: 'Tables',
     myOrders: 'My orders',
+    a11yMyOrdersReady: (n: number) => `My orders, ${n} ready`,
+  },
+
+  live: {
+    paused: 'Live updates paused. Reconnecting…',
+  },
+
+  payment: {
+    title: (number: number) => `Mark Table ${number} paid`,
+    subtitle: (id: number, total: string) => `Order #${id} · ${total}`,
+    question: 'HOW DID THE GUEST PAY?',
+    note: 'This only records how the guest paid. No money moves in this app.',
+    confirm: 'Confirm payment',
+    saving: 'Saving…',
+    failed: "Couldn't save the payment. Check your connection and try again.",
+  },
+
+  paymentMethods: {
+    cash: 'Cash',
+    telebirr: 'Telebirr',
+    cbe_birr: 'CBE Birr',
+  } satisfies Record<PaymentMethod, string>,
+
+  kitchen: {
+    eyebrow: 'Kitchen',
+    nameFallback: 'Cook',
+    a11yTime: (time: string) => `Time ${time}`,
+    lanes: { sent: 'New', preparing: 'Preparing', ready: 'Ready' },
+    a11yLane: (lane: string, n: number) => `${lane}, ${n} ${plural(n, 'order', 'orders')}`,
+    newTag: 'NEW',
+    meta: (id: number, waiter: string, time: string) => `#${id} · ${waiter} · ${time}`,
+    waiterFallback: 'Waiter',
+    qty: (n: number) => `${n}×`,
+    note: (note: string) => `“${note}”`,
+    justNow: 'Just now',
+    minutes: (m: number) => `${m} min`,
+    hours: (h: number, m: number) => `${h} h ${m} min`,
+    late: (timer: string) => `${timer} · Late`,
+    startPreparing: 'Start preparing',
+    starting: 'Starting…',
+    markReady: 'Mark ready',
+    markingReady: 'Marking ready…',
+    readyMeta: (items: string, waiter: string) => `${items} · ${waiter}`,
+    waitingPickup: 'Waiting for pickup',
+    quietTitle: 'Kitchen is quiet',
+    quietBody: 'New orders show up here the moment a waiter sends them.',
+    noNew: 'No new orders',
+    nothingCooking: 'Nothing cooking',
+    nothingReady: 'Nothing waiting for pickup',
+    connection: {
+      connecting: 'Connecting…',
+      live: 'Live',
+      reconnecting: 'Reconnecting…',
+      offline: 'Offline',
+    },
+    a11yConnection: (state: string) => `Connection: ${state}`,
+    lostTitle: 'Connection lost',
+    lostBody: "New orders won't show up until it's back. Trying again…",
+    retryNow: 'Retry now',
+    backOnline: 'Back online. The board is up to date.',
+    updateFailed: (number: number) => `Couldn't update Table ${number}. Tap the button to try again.`,
+    loadErrorTitle: "Couldn't load orders",
+    announceNew: (number: number) => `New order, Table ${number}`,
+    a11yTicket: (table: number, status: string, timer: string, items: string, late: boolean) =>
+      `Table ${table}, ${status}, ${timer}, ${items}${late ? ', late' : ''}`,
+    a11ySentAgo: (m: number) =>
+      m === 0 ? 'sent just now' : `sent ${m} ${plural(m, 'minute', 'minutes')} ago`,
+    a11yItem: (qty: number, name: string, note: string) => `${qty} ${name}${note ? `, note ${note}` : ''}`,
   },
 
   tables: {
@@ -68,6 +136,7 @@ export const strings = {
     a11yFree: (n: number, seats: number) => `Table ${n}, ${seats} seats, free`,
     a11yOpen: (n: number, seats: number, status: string) =>
       `Table ${n}, ${seats} seats, open order, status ${status}`,
+    a11yReady: (n: number, seats: number) => `Table ${n}, ${seats} seats, order ready to pick up`,
     errorTitle: "Couldn't load tables",
     refreshError: "Couldn't refresh. Showing the last tables loaded.",
     emptyTitle: 'No tables yet',
@@ -133,6 +202,13 @@ export const strings = {
     title: 'My orders',
     statOrders: 'Orders',
     statOpen: 'Open',
+    statReady: 'Ready',
+    pickup: 'Ready — pick up',
+    markServed: 'Mark served',
+    markPaid: 'Mark paid',
+    saving: 'Saving…',
+    servedFailed: (number: number) => `Couldn't mark Table ${number} served. Try again.`,
+    paidWith: (method: string) => `Paid with ${method}`,
     orderMeta: (id: number, time: string) => `Order #${id} · ${time}`,
     note: (note: string) => `“${note}”`,
     moreItems: (n: number) => `+${n} more items`,
