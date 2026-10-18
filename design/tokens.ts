@@ -14,7 +14,7 @@
  * compiler check that statusColors covers exactly the shared order statuses.
  */
 
-import type { OrderStatus } from '../shared/constants';
+import type { OrderStatus, PaymentMethod } from '../shared/constants';
 
 /* ------------------------------------------------------------------ */
 /* Raw palette — named by hue, never used directly by screens.         */
@@ -67,6 +67,11 @@ export const palette = {
   roast800: '#5A3A26',
   avocado50: '#E3EDD2',
   avocado800: '#3D5A16',
+
+  // Payment mix chart (owner dashboard, slice 5). Validated as a categorical set.
+  saffron600: '#C77A12',
+  blue600: '#2F6BC4',
+  plum600: '#A63D72',
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -121,6 +126,16 @@ const light = {
   levelFillLow: palette.red700,
   levelTick: palette.coffee400,
 
+  // Dashboard charts (owner website, slice 5). Non-text marks, 3:1+ on surface.
+  /** Single-series chart marks (sales by hour, top items). 6.57:1 on surface. */
+  chartBar: palette.coffee600,
+  /** Hovered / focused bar. 16.28:1 on surface. */
+  chartBarActive: palette.coffee900,
+  /** Payment mix: colour follows the method (PAYMENT_METHODS), never its rank. */
+  paymentCash: palette.saffron600, // 3.38:1 on surface
+  paymentTelebirr: palette.blue600, // 5.22:1
+  paymentCbeBirr: palette.plum600, // 5.95:1
+
   /** Dim layer behind a bottom sheet (coffee900 at 45%). Decorative, no text on it. */
   scrim: 'rgba(43, 29, 22, 0.45)',
 } as const;
@@ -156,6 +171,17 @@ export const statusColors = {
 } as const satisfies Record<OrderStatus | 'lowStock', ColorPair>;
 
 export type StatusColorKey = keyof typeof statusColors;
+
+/**
+ * Payment mix colours by method. `satisfies` fails to compile if a payment method is
+ * added to or removed from shared/constants.ts without a colour here.
+ * Web uses the classes bg-payment-cash / bg-payment-telebirr / bg-payment-cbe-birr.
+ */
+export const paymentColors = {
+  cash: light.paymentCash,
+  telebirr: light.paymentTelebirr,
+  cbe_birr: light.paymentCbeBirr,
+} as const satisfies Record<PaymentMethod, string>;
 
 /**
  * Solid status colors: the button that moves an order INTO a status uses that
@@ -218,6 +244,8 @@ export const radius = {
   lg: 16,
   xl: 24,
   full: 9999,
+  /** Data end of a chart bar (square at the baseline): rounded-t-bar. */
+  bar: 4,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -374,6 +402,18 @@ export const size = {
   stockStatusCol: 88,
   /** Space reserved under phone pages that have a sticky bottom action bar (12 + 56 + 12, rounded up). */
   phoneActionBar: 96,
+
+  // Owner dashboard (slice 5)
+  /** Sales by hour plot height (>= webBreakpoints.md). */
+  chartPlot: 200,
+  /** Sales by hour plot height on phone (< webBreakpoints.md). */
+  chartPlotSm: 160,
+  /** Max width of one hourly bar. */
+  hourBar: 24,
+  /** Top items bar thickness. */
+  itemBar: 8,
+  /** Payment mix stacked bar height. */
+  mixBar: 16,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -444,6 +484,25 @@ export const timing = {
   toastMs: 5_000,
   /** Stock level bar width transition. */
   levelBarMs: 400,
+  /** Dashboard tile values count from old to new. */
+  countUpMs: 600,
+} as const;
+
+/* ------------------------------------------------------------------ */
+/* Dashboard (owner website, slice 5). TS only, not emitted to CSS.     */
+/* ------------------------------------------------------------------ */
+
+export const dashboard = {
+  /** Sales by hour: first Addis hour always shown. */
+  dayStartHour: 6,
+  /** Sales by hour: shown up to (not including) this hour; stretches to include now and any hour with sales. */
+  dayEndHour: 22,
+  /** Smallest y-axis maximum, ETB (one Macchiato must not fill the chart). */
+  axisMinEtb: 1000,
+  /** Rows in Top items today. */
+  topItems: 5,
+  /** Rows in Stock alerts before "See all". */
+  stockAlertRows: 5,
 } as const;
 
 export const tokens = {
@@ -452,6 +511,7 @@ export const tokens = {
   colors,
   statusColors,
   statusSolid,
+  paymentColors,
   categoryTints,
   spacing,
   radius,
@@ -466,6 +526,7 @@ export const tokens = {
   webBreakpoints,
   stockLevel,
   timing,
+  dashboard,
 } as const;
 
 export default tokens;

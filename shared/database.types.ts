@@ -375,6 +375,7 @@ export type Database = {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
       }
+      dashboard_today: { Args: never; Returns: Json }
       place_order: {
         Args: { p_client_ref?: string; p_items: Json; p_table_id: number }
         Returns: number

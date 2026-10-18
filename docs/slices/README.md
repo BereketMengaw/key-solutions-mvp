@@ -10,8 +10,8 @@ Each spec has: goal, screens, data, and a "Done when" test run for real.
 | 2 | Waiter app | Log in → pick table → add items → send; order saved | done |
 | 3 | Cook screen | Order appears live on tablet; Ready shows on waiter's phone | done |
 | 4 | Stock | Orders deduct ingredients; owner adds stock on web; low stock flagged | done |
-| 5 | Owner dashboard | Sales today, top items, live orders, stock alerts | in progress |
-| 6 | Polish + demo | Good UI everywhere, Amharic/English, APK on client's phone | todo |
+| 5 | Owner dashboard | Sales today, top items, live orders, stock alerts | done |
+| 6 | Polish + demo | Good UI everywhere, Amharic/English, APK on client's phone | in progress |
 
 ## Workflow per slice
 

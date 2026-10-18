@@ -1,6 +1,6 @@
 # Slice 5 — Owner dashboard
 
-**Status:** queued (Bereket: "when it's done continue the next")
+**Status:** done 2026-10-18 — code-quality PASS
 **Agents:** `ui-designer` + `backend` (parallel) → `web` → `code-quality`
 
 ## Goal

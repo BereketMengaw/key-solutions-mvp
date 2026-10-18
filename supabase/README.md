@@ -26,6 +26,9 @@ supabase migration list --linked -p "$SUPABASE_DB_PASSWORD"
 # 2. Load / reset demo data (wipes tables, menu, stock and ALL orders; keeps users)
 supabase db query --linked -f supabase/seed.sql
 
+# 2b. Optional: a full day of trade for the dashboard (run right after step 2)
+supabase db query --linked -f supabase/scripts/demo-day.sql
+
 # 3. Create or reset the 4 demo logins (safe to re-run)
 bash supabase/scripts/create-demo-users.sh
 
@@ -40,6 +43,26 @@ supabase config push
 
 Before a client demo, run step 2: it clears old orders and puts beef back at 5.3 kg
 (threshold 5 kg), so the demo order of 2 Beef Tibs triggers the low-stock alert.
+
+**Demo day (optional, step 2b).** The plain seed stays the default reset (0 orders, the
+"fresh morning" the client sees first). To show a dashboard mid-trade instead, run step 2 and
+then step 2b. It refuses to run if any orders exist. It creates, all today in Addis time and
+never in the future:
+
+- 25 paid orders sent from about 07:00 until 30 minutes ago, busiest at lunch and early
+  evening (if it is early in the day, the same shape is squeezed into the hours that have
+  passed). Breakfast dishes before 11:00, mains at lunch and dinner, juice in the afternoon,
+  coffee/tea all day. Payment 45% cash / 40% telebirr / 15% cbe_birr by order count.
+- 3 open orders: Table 2 served, Table 6 preparing, Table 3 sent. Table 4 stays free for the
+  live demo order.
+- One `order` stock movement per ingredient per order (same maths as `place_order`), so
+  `quantity_on_hand` and the ledger agree. Beef ends around 2 kg (threshold 5), so the alert
+  shows; the live 2 Beef Tibs order still fits, and "+10 kg beef" still clears it.
+- Status times always run sent < preparing < ready < served < paid. The orders triggers
+  (which stamp `now()`) are switched off inside the script's transaction only.
+
+Example run at 17:45 Addis: 25 paid, 17,890 ETB, average 715.60, top items Macchiato ×22,
+Buna ×18, Beef Tibs ×9, Shiro Wot ×9, Tea ×8; cash 11 / telebirr 10 / cbe_birr 4.
 
 ## Data model
 
@@ -140,6 +163,67 @@ const { data: newQuantity, error } = await supabase.rpc('add_stock', {
     "This stock reference is already used" (ref used by someone else or for another ingredient)
 - Security definer with the role check in code; nobody can insert into `stock_movements` directly.
 
+### `dashboard_today() returns jsonb`
+
+Manager/owner only. Everything the owner dashboard shows, in one call (≈15 ms in the database).
+"Today" = the current calendar day in **Africa/Addis_Ababa**. The TypeScript shape is
+`DashboardToday` in `shared/dashboard.ts` (generated types only say `Json`).
+
+```ts
+import type { DashboardToday } from '../shared/dashboard';
+const { data, error } = await supabase.rpc('dashboard_today');
+const today = data as unknown as DashboardToday;
+```
+
+```jsonc
+{
+  "date": "2026-10-18",                 // today in Addis
+  "timezone": "Africa/Addis_Ababa",
+  "generated_at": "2026-10-18T14:47:05.1+00:00",
+  "sales_etb": 1370.00,                 // paid orders whose paid_at is today
+  "paid_orders": 1,                     // orders paid today
+  "orders_today": 1,                    // orders sent today, any status
+  "average_order_etb": 1370.00,         // sales_etb / paid_orders, 2 dp; 0 when none
+  "open_orders": 0,                     // not paid yet, any day (= live_floor length)
+  "sales_by_hour": [                    // ALWAYS 24 rows, hour 0..23 Addis, by paid_at
+    { "hour": 0, "sales_etb": 0 }, …, { "hour": 17, "sales_etb": 1370.00 }, …
+  ],
+  "top_items": [                        // ≤ 5, orders SENT today (any status)
+    { "menu_item_id": 5, "name": "Beef Tibs", "quantity": 2, "revenue_etb": 1300.00 },
+    { "menu_item_id": 9, "name": "Macchiato", "quantity": 1, "revenue_etb": 70.00 }
+  ],
+  "payment_mix": [                      // ALWAYS cash, telebirr, cbe_birr in that order
+    { "method": "cash", "sales_etb": 0, "orders": 0 },
+    { "method": "telebirr", "sales_etb": 1370.00, "orders": 1 },
+    { "method": "cbe_birr", "sales_etb": 0, "orders": 0 }
+  ],
+  "live_floor": [                       // open orders, oldest first; [] when none
+    { "id": 27, "table_number": 6, "status": "preparing",
+      "created_at": "…",                // when sent
+      "status_at": "…",                 // when it entered its current status
+      "item_count": 7,                  // sum of quantities
+      "waiter_name": "Hana Tesfaye", "total_etb": 2000.00 }
+  ],
+  "low_stock": [                        // quantity_on_hand < low_stock_threshold, most urgent first
+    { "id": 1, "name": "Beef", "unit": "kg", "quantity_on_hand": 4.800, "low_stock_threshold": 5.000 }
+  ]
+}
+```
+
+- After the plain seed: every number 0, `top_items`/`live_floor`/`low_stock` are `[]`,
+  `sales_by_hour` is 24 zero rows, `payment_mix` is 3 zero rows. Never null.
+- Money and quantities are JSON numbers (may carry `.00`); timestamps are ISO strings (UTC).
+- `sales_etb`, `sales_by_hour` and `payment_mix` count the same orders (paid today), so they add
+  up. `top_items` counts what was ordered today including unpaid orders, so the dashboard
+  reacts the moment the waiter sends.
+- Errors: `42501` "Only a manager or owner can see the dashboard" (waiter, cook, no role;
+  HTTP 403). anon: `42501` permission denied (HTTP 401).
+- **Security invoker.** Manager/owner already read every table it uses through RLS, so it runs
+  with the caller's rights and needs no extra privilege; the role check at the top turns a
+  waiter/cook call into a clear error instead of a half-empty result. `search_path = ''`.
+- **Refreshing live:** refetch the whole thing (sequence-guarded) on any `orders`,
+  `order_items` or `ingredients` event, and once on `SUBSCRIBED` — see Realtime below.
+
 ### Moving an order along (plain table update, no RPC)
 
 ```ts
@@ -193,6 +277,20 @@ supabase.channel('stock')
 - `ingredients` UPDATE carries the full row, so the level bar can update from the payload;
   movement INSERTs carry ids only (no ingredient name), so look the name up from the list you
   already have.
+
+```ts
+// owner dashboard: refetch dashboard_today() on any of these (debounce ~300 ms; an order
+// placement fires 1 orders + N order_items + N ingredients events at once)
+supabase.channel('dashboard')
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'orders' }, refetch)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'order_items' }, refetch)
+  .on('postgres_changes', { event: '*', schema: 'public', table: 'ingredients' }, refetch)
+  .subscribe((status) => { if (status === 'SUBSCRIBED') refetch(); });
+```
+
+Verified (slice 5) with live listeners during Table 4 → paid: owner and manager each received
+`orders` INSERT 1 + UPDATE 4, `order_items` INSERT 2, `ingredients` UPDATE 7; the cook received
+the orders/order_items events and no ingredients events.
 
 ## Rules enforced in the database
 

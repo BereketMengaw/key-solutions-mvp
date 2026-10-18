@@ -71,7 +71,7 @@ function SideContent({
 }) {
   return (
     <>
-      <Link href="/stock" onClick={onNavigate} className="px-2 flex items-center gap-3 rounded-md">
+      <Link href="/dashboard" onClick={onNavigate} className="px-2 flex items-center gap-3 rounded-md">
         <BrandMark />
         <span className="flex flex-col">
           <span className="text-md font-bold text-text">{s.brand.name}</span>
@@ -136,7 +136,7 @@ export function AppFrame({ user, children }: { user: FrameUser; children: ReactN
       </aside>
 
       <header className="lg:hidden sticky top-0 z-40 h-top-bar bg-surface border-b border-border px-4 flex items-center justify-between">
-        <Link href="/stock" className="flex items-center gap-3 rounded-md">
+        <Link href="/dashboard" className="flex items-center gap-3 rounded-md">
           <BrandMark />
           <span className="text-md font-bold">{s.brand.name}</span>
         </Link>

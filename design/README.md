@@ -106,6 +106,16 @@ item: `primary` on `primarySoft` 5.23. Login brand panel: white on `primary` 5.9
 `primarySoft` on `primary` 5.23. The bar's track is decorative (the fill and the tick
 carry the meaning, and the number is always printed next to it).
 
+Slice 5 checks (owner dashboard). Chart marks on surface (non-text, 3:1): `chartBar`
+6.57, `chartBarActive` 16.28, live bar flash `primary` 5.98. Payment mix on surface:
+`paymentCash` 3.38, `paymentTelebirr` 5.22, `paymentCbeBirr` 5.95. The three payment
+colours were run through the dataviz palette validator (light, surface `#FFFFFF`, all
+pairs): lightness band and chroma floor pass; colour-blind separation worst pair
+plum/blue ΔE 13.9 (target 8); normal-vision worst pair plum/saffron ΔE 21.4 (floor 15).
+They are never used for text, and the legend prints every amount and share. Gridlines
+(`border`), the chart baseline (`borderStrong`) and the "Now" band (`surfaceMuted`) are
+decorative: every value is printed or in the chart's table twin.
+
 ### Dark mode later
 
 Screens use `colors.*` (semantic), never `palette.*` (raw). To add dark mode, add a
@@ -141,6 +151,13 @@ Laptop first (designed at 1440 and 1280), usable at 390. Tokens added for it:
 `webBreakpoints` md 768 / lg 1024 / xl 1280; `stockLevel.barScale` 6; colors `levelTrack`, `levelFill`,
 `levelFillLow`, `levelTick`; timings `rowFlashHoldMs`, `rowFlashFadeMs`, `deltaShowMs`,
 `toastMs`, `levelBarMs`. Screens: `screens/04-web-shell.md`, `screens/04-stock.md`.
+
+Dashboard (slice 5) added: colors `chartBar`, `chartBarActive`, `paymentCash`,
+`paymentTelebirr`, `paymentCbeBirr` (+ palette `saffron600`, `blue600`, `plum600`) and
+`paymentColors` (typed by `PaymentMethod`); `size.chartPlot` 200, `size.chartPlotSm` 160,
+`size.hourBar` 24, `size.itemBar` 8, `size.mixBar` 16; `radius.bar` 4;
+`timing.countUpMs` 600; `dashboard` constants (hour window 6–22, `axisMinEtb` 1000,
+`topItems` 5, `stockAlertRows` 5 — TS only). Screen: `screens/05-dashboard.md`.
 
 ## Touch
 

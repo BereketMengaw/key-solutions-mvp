@@ -23,7 +23,7 @@ export default async function WrongRolePage() {
   const viewer = await getViewer();
   if (viewer.kind === 'signed-out') redirect('/login');
   const role = viewer.kind === 'ok' ? viewer.role : null;
-  if (isWebRole(role)) redirect('/stock');
+  if (isWebRole(role)) redirect('/dashboard');
 
   const variant = (role && APP_ROLE_VARIANTS[role]) || NO_ROLE;
   const name = viewer.kind === 'ok' && viewer.fullName ? viewer.fullName : viewer.email;

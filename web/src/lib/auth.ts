@@ -30,6 +30,6 @@ export const getViewer = cache(async (): Promise<Viewer> => {
 });
 
 /** Where a signed-in user belongs. */
-export function homeFor(role: Role | null | undefined): '/stock' | '/wrong-role' {
-  return isWebRole(role) ? '/stock' : '/wrong-role';
+export function homeFor(role: Role | null | undefined): '/dashboard' | '/wrong-role' {
+  return isWebRole(role) ? '/dashboard' : '/wrong-role';
 }

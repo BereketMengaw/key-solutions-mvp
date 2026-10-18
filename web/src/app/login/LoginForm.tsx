@@ -81,7 +81,7 @@ export function LoginForm({ next, expired }: { next: string | null; expired: boo
         ),
       );
       // Stay in "Signing in…" through the redirect: no flash back to the form.
-      router.replace(isWebRole(profile?.role) ? (safeNext(next) ?? '/stock') : '/wrong-role');
+      router.replace(isWebRole(profile?.role) ? (safeNext(next) ?? '/dashboard') : '/wrong-role');
       router.refresh();
     } catch {
       setBusy(false);
