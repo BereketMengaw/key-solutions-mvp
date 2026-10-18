@@ -33,19 +33,23 @@ export function LiveOrdersProvider({ children }: { children: ReactNode }) {
   const [readyCount, setReadyCount] = useState(0);
   const [justReady, setJustReady] = useState<ReadonlySet<number>>(new Set());
   const debounce = useRef<ReturnType<typeof setTimeout> | null>(null);
+  // The waiter's orders we know are ready. Realtime UPDATEs carry only the primary key in
+  // `old` (default replica identity), so "turned ready" is decided against this set.
+  const readyIds = useRef<Set<number>>(new Set());
 
   const bump = useCallback(() => setVersion((v) => v + 1), []);
 
   const onChange = useCallback(
     (change: OrderChange) => {
-      if (
-        change.eventType === 'UPDATE' &&
-        change.new.status === READY &&
-        change.old.status !== READY &&
-        change.new.waiter_id === userId
-      ) {
-        Vibration.vibrate(timing.readyVibrateMs);
-        setJustReady((prev) => new Set(prev).add(change.new.id));
+      if (change.eventType === 'UPDATE' && change.new.waiter_id === userId) {
+        const { id, status } = change.new;
+        if (status === READY && !readyIds.current.has(id)) {
+          readyIds.current.add(id);
+          Vibration.vibrate(timing.readyVibrateMs);
+          setJustReady((prev) => new Set(prev).add(id));
+        } else if (status !== READY) {
+          readyIds.current.delete(id);
+        }
       }
       if (debounce.current) clearTimeout(debounce.current);
       debounce.current = setTimeout(bump, REFETCH_DEBOUNCE_MS);
@@ -64,11 +68,13 @@ export function LiveOrdersProvider({ children }: { children: ReactNode }) {
     let cancelled = false;
     supabase
       .from('orders')
-      .select('id', { count: 'exact', head: true })
+      .select('id')
       .eq('waiter_id', userId)
       .eq('status', READY)
-      .then(({ count, error }) => {
-        if (!cancelled && !error) setReadyCount(count ?? 0);
+      .then(({ data, error }) => {
+        if (cancelled || error) return;
+        readyIds.current = new Set(data.map((o) => o.id));
+        setReadyCount(data.length);
       });
     return () => {
       cancelled = true;

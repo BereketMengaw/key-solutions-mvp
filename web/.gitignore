@@ -1,0 +1,15 @@
+/node_modules
+/.next/
+/out/
+/build
+/coverage
+.DS_Store
+*.pem
+npm-debug.log*
+
+# env files: .env.local holds the real keys; .env.example lists them
+.env*
+!.env.example
+
+*.tsbuildinfo
+next-env.d.ts

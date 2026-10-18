@@ -1,5 +1,6 @@
 // The order being built, held in memory until it is sent. One draft at a time.
-import { createContext, useCallback, useContext, useMemo, useState, type ReactNode } from 'react';
+import { randomUUID } from 'expo-crypto';
+import { createContext, useCallback, useContext, useMemo, useRef, useState, type ReactNode } from 'react';
 
 import type { Tables } from '@shared/database.types';
 
@@ -21,6 +22,9 @@ export type DraftTable = { id: number; number: number; seats: number };
 
 type Draft = { table: DraftTable | null; lines: DraftLine[] };
 
+/** What `place_order` receives for one line. */
+export type OrderItemPayload = { menu_item_id: number; quantity: number; note: string };
+
 type DraftContextValue = Draft & {
   count: number;
   total: number;
@@ -30,6 +34,13 @@ type DraftContextValue = Draft & {
   decrement: (menuItemId: number) => void;
   setNote: (menuItemId: number, note: string) => void;
   clear: () => void;
+  /**
+   * Idempotency key for sending this draft. The same order content gets the same key for as
+   * long as the draft lives (it outlives the cart screen), so a retry after a timeout returns
+   * the order the first call created instead of making a second one. Any change to what would
+   * be sent, or clear(), gives the next Send a new key.
+   */
+  clientRefFor: (tableId: number, items: OrderItemPayload[]) => string;
 };
 
 const DraftContext = createContext<DraftContextValue | null>(null);
@@ -38,6 +49,14 @@ const EMPTY: Draft = { table: null, lines: [] };
 
 export function DraftProvider({ children }: { children: ReactNode }) {
   const [draft, setDraft] = useState<Draft>(EMPTY);
+  // Not state: it never affects rendering. Keyed by the exact payload it was made for.
+  const sendKey = useRef<{ payload: string; ref: string } | null>(null);
+
+  const clientRefFor = useCallback<DraftContextValue['clientRefFor']>((tableId, items) => {
+    const payload = JSON.stringify([tableId, items]);
+    if (sendKey.current?.payload !== payload) sendKey.current = { payload, ref: randomUUID() };
+    return sendKey.current.ref;
+  }, []);
 
   const add = useCallback<DraftContextValue['add']>((table, line) => {
     setDraft((d) => {
@@ -80,7 +99,10 @@ export function DraftProvider({ children }: { children: ReactNode }) {
     (id: number, note: string) => update(id, (l) => ({ ...l, note: note.slice(0, NOTE_MAX_LENGTH) })),
     [update],
   );
-  const clear = useCallback(() => setDraft(EMPTY), []);
+  const clear = useCallback(() => {
+    sendKey.current = null;
+    setDraft(EMPTY);
+  }, []);
 
   const value = useMemo<DraftContextValue>(() => {
     const count = draft.lines.reduce((s, l) => s + l.quantity, 0);
@@ -95,8 +117,9 @@ export function DraftProvider({ children }: { children: ReactNode }) {
       decrement,
       setNote,
       clear,
+      clientRefFor,
     };
-  }, [draft, add, increment, decrement, setNote, clear]);
+  }, [draft, add, increment, decrement, setNote, clear, clientRefFor]);
 
   return <DraftContext.Provider value={value}>{children}</DraftContext.Provider>;
 }

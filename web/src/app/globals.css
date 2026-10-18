@@ -1,0 +1,24 @@
+@import "tailwindcss";
+@import "../../../design/tokens.css";
+
+@layer base {
+  html { background: var(--color-background); color: var(--color-text); }
+  body { @apply font-sans text-md; }
+  :focus-visible { outline: 2px solid var(--color-focus-ring); outline-offset: 2px; }
+  button:not(:disabled), [role="button"]:not(:disabled) { cursor: pointer; }
+  /* Native <dialog> drawers: no UA box. */
+  dialog { margin: 0; padding: 0; max-width: none; max-height: none; background: transparent; border: 0; }
+}
+
+/* Drawer enter/exit (native <dialog>, see components/Drawer.tsx). */
+@layer components {
+  .drawer-panel { transition: translate 250ms ease-out; }
+  .drawer-right .drawer-panel { translate: 100% 0; }
+  .drawer-left .drawer-panel { translate: -100% 0; }
+  .drawer[data-open="true"] .drawer-panel { translate: 0 0; }
+  .drawer::backdrop { background: var(--color-scrim); opacity: 0; transition: opacity 250ms ease-out; }
+  .drawer[data-open="true"]::backdrop { opacity: 1; }
+  @media (prefers-reduced-motion: reduce) {
+    .drawer-panel, .drawer::backdrop { transition: none; }
+  }
+}

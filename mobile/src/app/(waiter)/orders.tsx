@@ -80,17 +80,24 @@ export default function MyOrdersScreen() {
   const [payFailed, setPayFailed] = useState(false);
   const live = useLive();
   const hasData = useRef(false);
+  // Focus, pull-to-refresh, live refetches and post-action refetches can overlap. Each load
+  // takes a number; only the newest one may write, so a slow older response never replaces
+  // a newer list (or flags an error after a newer load succeeded).
+  const loadSeq = useRef(0);
 
   const load = useCallback(async () => {
     if (!userId) return;
+    const seq = ++loadSeq.current;
     try {
       const next = await fetchMyOrders(userId);
+      if (seq !== loadSeq.current) return;
       if (hasData.current) LayoutAnimation.configureNext(LayoutAnimation.Presets.easeInEaseOut);
       hasData.current = true;
       setOrders(next);
       setFirstError(false);
       setRefreshError(false);
     } catch {
+      if (seq !== loadSeq.current) return;
       if (hasData.current) setRefreshError(true);
       else setFirstError(true);
     }

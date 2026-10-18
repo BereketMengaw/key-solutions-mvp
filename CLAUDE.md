@@ -87,6 +87,13 @@ in one place per app so translation is a drop-in. Amharic must read native, not 
 3. `code-quality` has reviewed the change and has no blocking findings.
 4. The PM has shown the result to Bereket and he has accepted it.
 
+## The shared demo database
+
+There is one Supabase project and every agent tests against it. Running `seed.sql` wipes
+all orders and stock. **Only reset or write test data when the PM's brief says you are the
+only agent testing against the database.** If your brief doesn't say so, use read-only
+checks, or ask the PM in your report. Always leave the database reset (0 orders) when done.
+
 ## Git
 
 - One branch per slice: `slice/NN-name`. The PM merges to `main`.

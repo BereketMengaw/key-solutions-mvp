@@ -302,28 +302,34 @@ export type Database = {
       stock_movements: {
         Row: {
           change: number
+          client_ref: string | null
           created_at: string
           created_by: string | null
           id: number
           ingredient_id: number
+          note: string
           order_id: number | null
           reason: Database["public"]["Enums"]["stock_reason"]
         }
         Insert: {
           change: number
+          client_ref?: string | null
           created_at?: string
           created_by?: string | null
           id?: never
           ingredient_id: number
+          note?: string
           order_id?: number | null
           reason: Database["public"]["Enums"]["stock_reason"]
         }
         Update: {
           change?: number
+          client_ref?: string | null
           created_at?: string
           created_by?: string | null
           id?: never
           ingredient_id?: number
+          note?: string
           order_id?: number | null
           reason?: Database["public"]["Enums"]["stock_reason"]
         }
@@ -356,6 +362,15 @@ export type Database = {
       [_ in never]: never
     }
     Functions: {
+      add_stock: {
+        Args: {
+          p_client_ref?: string
+          p_ingredient_id: number
+          p_note?: string
+          p_quantity: number
+        }
+        Returns: number
+      }
       auth_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]

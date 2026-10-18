@@ -618,3 +618,251 @@ One row in the PaymentSheet (`03-waiter-live.md`).
   `radio-button-on` `colors.primary`.
 - Disabled while saving: opacity stays, not pressable.
 - a11y: role `radio`, `accessibilityState={{ checked, disabled }}`, label = the label.
+
+---
+
+# Slice 4 — website components (owner / manager)
+
+The owner website (Next.js + Tailwind v4). Class names come from `design/tokens.css`;
+see `web-tailwind.md` for the mapping (`colors.textMuted` → `text-text-muted`,
+`spacing[4]` → `p-4`, `size.sidebar` → `w-sidebar`). Screens:
+`screens/04-web-shell.md`, `screens/04-stock.md`.
+
+## Web global rules
+
+- **Mouse and keyboard first, touch still works.** Hover = the mobile "pressed" colour.
+  Every interactive element has a visible `:focus-visible` outline: 2 px
+  `focus-ring`, offset 2 (set once in `globals.css`, see `web-tailwind.md`). Never
+  `outline-none` without a replacement.
+- **Sizes:** controls are `h-12` (48) by default, `h-10` (40) for the small in-row
+  variant on laptop only. Below `md` every control is at least `h-12`.
+- **Numbers:** every quantity, count and time uses `tabular-nums`.
+- **Strings:** one file, `web/src/lib/strings.ts`. English text exactly as written in
+  the screen specs.
+- **Times** are shown in Addis Ababa time on server *and* client:
+  `new Intl.DateTimeFormat('en-GB', { hour: '2-digit', minute: '2-digit', hourCycle: 'h23', timeZone: 'Africa/Addis_Ababa' })`.
+  The server renders in UTC otherwise and the times would be 3 hours off.
+- **Motion:** every transition listed here is wrapped so `motion-reduce:` removes it
+  (`motion-reduce:transition-none motion-reduce:animate-none`). Colours still change.
+- **Icons:** Ionicons v7 outline SVGs, inlined as small React components in
+  `web/src/components/icons.tsx` (no package). Copy each `<path>` from
+  `https://unpkg.com/ionicons@7.4.0/dist/svg/<name>.svg`. Icons take
+  `className` (size + colour via `currentColor`) and are `aria-hidden="true"`.
+  Names used this slice: `stats-chart-outline`, `cube-outline`, `restaurant-outline`,
+  `log-out-outline`, `menu-outline`, `close`, `add`, `search-outline`,
+  `warning-outline`, `alert-circle`, `checkmark-circle`, `cloud-offline-outline`,
+  `time-outline`, `chevron-down`, `receipt-outline`, `add-circle-outline`,
+  `phone-portrait-outline`, `flame-outline`, `person-circle-outline`,
+  `eye-outline`, `eye-off-outline`.
+
+## Formatting helpers (`web/src/lib/format.ts`)
+
+Units are always the ingredient's own unit from the database. **Never convert** (no
+"250 g"): the threshold, the stock and the Add stock amount must read in the same unit,
+and deliveries arrive by the kilo.
+
+| Function | Rule | Examples |
+|---|---|---|
+| `formatQuantity(n, unit)` | `kg`/`L`: round to 2 decimals, drop trailing zeros. `pcs`: round to whole. Thousands `,`. A no-break space (U+00A0) before the unit. | `5.3 → "5.3 kg"`, `4.8 → "4.8 kg"`, `14.8 → "14.8 kg"`, `3 → "3 kg"`, `5.982 → "5.98 kg"`, `0.5 → "0.5 kg"`, `20 → "20 L"`, `120 → "120 pcs"`, `1250 → "1,250 pcs"`, `0 → "0 kg"` |
+| `formatDelta(n, unit)` | Sign first: `+` or `−` (U+2212, not a hyphen). `kg`/`L`: up to **3** decimals (recipe amounts are small), drop trailing zeros. | `10 → "+10 kg"`, `-0.5 → "−0.5 kg"`, `-0.018 → "−0.018 kg"`, `-4 → "−4 pcs"`, `-0.1 → "−0.1 L"` |
+| `unitWord(unit)` | For helper text. | `kg → "kg"`, `L → "litres"`, `pcs → "pieces"` |
+| `formatTime(iso)` | `HH:mm`, Addis time (above). Today → `"14:02"`; yesterday → `"Yesterday 14:02"`; older → `"12 Oct 14:02"`. | |
+
+Implementation hint (avoid float noise): `Number(n.toFixed(2)).toString()` then add
+thousands separators to the integer part. `Intl.NumberFormat('en-US', { maximumFractionDigits: 2 })` is fine on the web too.
+
+**Low stock** is decided on raw numbers, never the rounded text:
+`isLow = quantity_on_hand < low_stock_threshold` (strictly below — at the threshold is not low); **Out** when
+`quantity_on_hand <= 0`. (If the backend exposes its own `is_low`, use that instead —
+same rule.)
+
+## Button (web)
+
+Same variants and colours as the mobile Button, plus web sizes and hover.
+
+| Size | Height | Padding x | Label |
+|---|---|---|---|
+| `lg` | `h-primary-action` (56) | `px-6` | `text-lg font-semibold` — login submit only |
+| `md` (default) | `h-12` | `px-5` | `text-md font-semibold` |
+| `sm` | `h-10` (≥ `md` breakpoint only; `h-12` below) | `px-4` | `text-sm font-semibold` |
+
+- `primary`: `bg-primary text-text-on-primary shadow-md hover:bg-primary-pressed rounded-lg`.
+- `secondary`: `bg-surface text-text border-[1.5px] border-border-control hover:bg-surface-muted rounded-lg`.
+- `ghost`: `bg-transparent text-primary hover:bg-primary-soft rounded-md`.
+- Icon: `size-icon` (sm: `size-icon-sm`), `gap-2`.
+- **Loading:** a CSS spinner (`size-icon-sm rounded-full border-2 border-current
+  border-r-transparent animate-spin`) + `gap-2` + the loading label. Width must not
+  change: give the button `min-w` equal to its default width or keep the label the
+  same length. `aria-busy="true"`, `disabled`.
+- **Disabled:** `bg-surface-muted text-text-subtle border-[1.5px] border-border shadow-none cursor-not-allowed`.
+- `cursor-pointer` on enabled buttons (Tailwind v4 preflight sets `default`).
+
+## TextField / Select / Search (web)
+
+- Label: `text-sm font-semibold text-text mb-2`, a real `<label htmlFor>`.
+- Box: `h-12 w-full rounded-md bg-surface px-4 text-md text-text border-[1.5px]
+  border-border-control placeholder:text-text-subtle`.
+- **Hover:** `border-text-muted`. **Focus:** `border-2 border-focus-ring` with
+  `px-[15.5px]` so text doesn't shift, no outline (the border is the ring).
+- **Error:** `border-2 border-danger`, `aria-invalid="true"`,
+  `aria-describedby` → the message row under it: `mt-2 flex gap-1 text-sm text-danger`
+  with `alert-circle` `size-icon-sm`.
+- **Helper text** (when no error): `mt-2 text-sm text-text-muted`.
+- **Disabled:** `bg-surface-muted text-text-muted border-border`.
+- **Unit suffix** (Amount field): the unit sits inside the box on the right,
+  `text-md font-semibold text-text-muted`, `pr-4`; the input gets `pr-16` so digits
+  never run under it. The suffix is `aria-hidden`; the unit is in the helper text.
+- **Select:** native `<select>`, same box, `appearance-none pr-12`, a `chevron-down`
+  `size-icon text-text-muted` absolutely placed `right-4`, `pointer-events-none`.
+- **Search:** same box with a leading `search-outline` `size-icon text-text-muted`
+  at `left-4`, input `pl-12`. When it has text, a trailing clear button (`close`,
+  `size-10` hit area, `aria-label="Clear search"`) at `right-1`. `type="search"`.
+- **Password:** trailing show/hide button as on mobile, `aria-label` `"Show password"` /
+  `"Hide password"`.
+
+## Avatar
+
+`size-avatar rounded-full bg-surface-muted text-text-muted text-sm font-bold`,
+initials centred (first letter of the first two words of `full_name`, uppercase:
+`"Abebe Kebede" → "AK"`). Empty name → `person-circle-outline` `size-icon-lg`.
+`aria-hidden` (the name is printed next to it).
+
+## NavItem
+
+A link in the sidebar / nav drawer.
+
+- `h-12 flex items-center gap-3 px-3 rounded-md text-md font-medium`.
+- Default: `text-text-muted`, icon `size-icon text-text-muted`. Hover:
+  `bg-surface-muted text-text`.
+- **Active** (current route, `aria-current="page"`): `bg-primary-soft text-primary
+  font-semibold`, icon `text-primary` (5.23:1).
+- Optional trailing **count chip** (`ml-auto`): `min-w-6 h-6 px-2 rounded-full
+  bg-status-low-stock-bg text-status-low-stock-fg text-xs font-bold tabular-nums`,
+  centred. Screen reader text: `"1 low"` via `sr-only` after the number.
+
+## StatusChip (stock)
+
+The flag on a low row. **Icon + word + colour, always together.**
+
+| State | Label | Icon | Classes |
+|---|---|---|---|
+| Low | `"Low"` | `warning-outline` | `bg-status-low-stock-bg text-status-low-stock-fg` |
+| Out | `"Out"` | `alert-circle` | `bg-danger text-text-on-overdue` (7.50:1) |
+| OK | nothing visible | — | `sr-only` text `"In stock"` |
+
+Shape: `inline-flex items-center gap-1 py-1 px-3 rounded-full text-sm font-semibold`,
+icon `size-icon-sm`. (Only the flags get colour, so the eye lands on them.)
+
+## LevelBar
+
+Shows how much is on hand against the low level.
+
+```
+       tick (low level, always at 1/6 = 16.7%)
+       │
+[██████│█░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   Beef 5.3 kg, low at 5 → 17.7%, coffee fill
+[█████▌│░░░░░░░░░░░░░░░░░░░░░░░░░░░░░░]   Beef 4.8 kg → 16%, fill turns red
+[██████│███████████░░░░░░░░░░░░░░░░░░░]   Beef 14.8 kg → 49%
+```
+
+- Container: `relative h-level-tick` (16, gives the tick room) `w-full`, flex
+  centred vertically. `aria-hidden="true"` — the number and chip carry the meaning.
+- Track: `h-level-bar w-full rounded-full bg-level-track overflow-hidden`.
+- Fill: `h-full rounded-full bg-level-fill` (low/out: `bg-level-fill-low`),
+  `style={{ width: pct + '%' }}`, `transition-[width] duration-400 ease-out`
+  (`motion-reduce:transition-none`)
+  (`timing.levelBarMs`).
+  `pct = min(q / (threshold × stockLevel.barScale), 1) × 100`; if `q > 0` use at
+  least 2 so a nearly empty bar is still visible; `q <= 0` → 0; threshold 0 → 100 and no tick.
+- Tick: `absolute top-0 h-level-tick w-level-tick-width rounded-full bg-level-tick`,
+  `left: 100 / stockLevel.barScale + '%'` (16.7%), `-translate-x-1/2`. It is taller than
+  the track so it shows above and below the fill.
+
+## StatTile
+
+A number card at the top of a page.
+
+- `rounded-xl bg-surface border border-border shadow-sm p-5 flex flex-col gap-1`,
+  text left-aligned.
+- Label row: icon `size-icon text-text-muted` + `gap-2` + label `text-sm font-semibold
+  text-text-muted`.
+- Value: `text-3xl font-bold text-text tabular-nums` (`mt-1`).
+- Caption: `text-sm text-text-muted`, 1–2 lines, `line-clamp-2`.
+- **Alert variant:** `bg-status-low-stock-bg border-status-low-stock-fg/30`; label,
+  icon and value `text-status-low-stock-fg`; caption `text-text` (13.31:1).
+- **As a button** (Low stock tile): a `<button>` with `aria-pressed`, `hover:shadow-md`,
+  and when pressed `ring-2 ring-status-low-stock-fg ring-offset-2 ring-offset-background`.
+- **Flash** (value changed live): see the screen.
+
+## LivePill (web ConnectionPill)
+
+Same four states, colours and words as the kitchen `ConnectionPill`
+(`03-kitchen.md` → Connection states): Connecting… / Live / Reconnecting… / Offline.
+Web size: `h-10 px-4 rounded-full gap-2 text-sm font-semibold`, dot `size-2
+rounded-full`, spinner as in Button loading, icon `size-icon-sm`. `role="status"`
+(polite). Not interactive.
+
+## Toast
+
+One at a time, for the result of an action the user just took (never for live events).
+
+- Position: `fixed z-50 bottom-6 right-6 w-drawer max-w-[calc(100vw-2rem)]`; below
+  `md`: `bottom-4 inset-x-4 w-auto` (above the sticky action bar if the page has one —
+  the page says).
+- `bg-surface border border-border rounded-lg shadow-lg p-4 flex items-start gap-3`.
+- Icon `checkmark-circle size-icon-lg text-success` (error variant: `alert-circle
+  text-danger`).
+- Title `text-md font-semibold text-text`; body `text-sm text-text-muted`.
+- Close button (`close`, `size-10`, `aria-label="Dismiss"`).
+- `role="status"` `aria-live="polite"`. Auto-hides after `timing.toastMs`; the timer
+  pauses while hovered or focused. Enters with `translate-y-2 opacity-0` →
+  `translate-y-0 opacity-100`, `duration-250`.
+
+## Drawer (side sheet)
+
+Used by Add stock and the phone nav. Built on the native `<dialog>` element with
+`showModal()` — it gives the modal backdrop, Esc, and makes the page behind inert.
+No library.
+
+- `<dialog>` reset: `m-0 p-0 max-h-none max-w-none bg-transparent`, and
+  `backdrop:bg-scrim`.
+- **Right drawer (≥ `md`):** panel `fixed inset-y-0 right-0 h-full w-drawer
+  bg-surface shadow-lg flex flex-col`. Below `md`: `inset-0 w-full` (full screen).
+- **Left drawer** (nav, < `lg`): `inset-y-0 left-0 w-sidebar`.
+- Enter: slide from its edge (`translate-x-full` → `0`, left: `-translate-x-full`),
+  `duration-250 ease-out` (`timing.enterMs`); backdrop fades in.
+- Header: `flex items-start justify-between gap-4 px-6 pt-6 pb-4 border-b border-border`.
+  Title `text-xl font-bold` (the `<h2>`, referenced by `aria-labelledby`), optional
+  subtitle `text-sm text-text-muted mt-1`. Close button: `close` icon, `size-12`
+  round, `hover:bg-surface-muted`, `aria-label="Close"`.
+- Body: `flex-1 overflow-y-auto px-6 py-6`.
+- Footer (sticky): `px-6 py-4 border-t border-border bg-surface flex gap-3
+  justify-end`; below `md` the two buttons share the width (`flex-1` each).
+- Clicking the backdrop closes it (unless the drawer says it is busy). Focus returns to
+  the element that opened it.
+
+## SegmentedControl
+
+Two or three options, one active (All / Low).
+
+- Group: `inline-flex h-12 p-1 gap-1 rounded-lg bg-surface-muted`,
+  `role="group"` with `aria-label`.
+- Option: `<button aria-pressed>` `h-10 px-4 rounded-md text-sm font-semibold
+  text-text-muted hover:text-text flex items-center gap-2`.
+- Active: `bg-surface text-text shadow-sm`.
+- Optional count after the label: `text-text-subtle tabular-nums`; on the Low option,
+  when the count is above 0, the count is a chip `min-w-6 h-6 px-2 rounded-full
+  bg-status-low-stock-bg text-status-low-stock-fg text-xs font-bold`.
+
+## Banner, EmptyState, Skeleton (web)
+
+Same as the mobile specs above, with classes:
+
+- **Banner:** `flex gap-3 rounded-md px-4 py-3`; `error` `bg-danger-soft`, title
+  `text-sm font-semibold text-danger`, body `text-sm text-text`; `role="alert"`.
+- **EmptyState:** centred column, circle `size-hero-circle rounded-full
+  bg-surface-muted` with icon `size-icon-xl text-text-muted`; title `mt-4 text-xl
+  font-bold`; body `mt-2 text-md text-text-muted max-w-text-block`; button `mt-6`.
+  Error variant: circle `bg-danger-soft`, icon `text-danger`.
+- **Skeleton:** `bg-surface-muted animate-pulse` blocks with the real element's radius.
+  Container `aria-busy="true"` with `sr-only` `"Loading"`.

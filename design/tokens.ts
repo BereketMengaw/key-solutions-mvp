@@ -113,6 +113,14 @@ const light = {
 
   focusRing: palette.berbere600,
 
+  // Stock level bar (owner website, slice 4). Non-text, 3:1+ where it matters:
+  // levelFill on levelTrack 5.60, levelFillLow on levelTrack 6.40, levelTick on
+  // surface 3.75 / on primarySoft (row flash) 3.28. The track itself is decorative.
+  levelTrack: palette.cream100,
+  levelFill: palette.coffee600,
+  levelFillLow: palette.red700,
+  levelTick: palette.coffee400,
+
   /** Dim layer behind a bottom sheet (coffee900 at 45%). Decorative, no text on it. */
   scrim: 'rgba(43, 29, 22, 0.45)',
 } as const;
@@ -335,6 +343,37 @@ export const size = {
   ringWidth: 4,
   /** Colored top edge of a kitchen lane. */
   laneEdge: 6,
+
+  // Owner website (slice 4)
+  /** Left sidebar on laptop (>= webBreakpoints.lg). */
+  sidebar: 240,
+  /** Top bar on tablet/phone (< webBreakpoints.lg). */
+  topBar: 64,
+  /** Max width of a page's content column, centered in the main area. */
+  content: 1120,
+  /** Right-hand side panel on the Stock page (Recent changes), >= webBreakpoints.xl. */
+  sidePanel: 320,
+  /** Add stock drawer width (>= webBreakpoints.md; full screen below). */
+  drawer: 440,
+  /** Login form card width. */
+  loginCard: 420,
+  /** Small brand mark in the sidebar / top bar. */
+  brandMarkSm: 36,
+  /** User avatar circle in the sidebar. */
+  avatar: 40,
+  /** Stock level bar track height. */
+  levelBar: 8,
+  /** Low-level tick on the stock bar: taller than the track so it shows over the fill. */
+  levelTick: 16,
+  /** Width of that tick. */
+  levelTickWidth: 2,
+  /** Left edge on a low-stock row / card. */
+  flagEdge: 4,
+  /** Min widths of the Stock table's On hand / Status columns (no shift on live updates). */
+  stockQtyCol: 112,
+  stockStatusCol: 88,
+  /** Space reserved under phone pages that have a sticky bottom action bar (12 + 56 + 12, rounded up). */
+  phoneActionBar: 96,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -346,6 +385,34 @@ export const breakpoints = {
   kitchenThreeLanes: 1100,
   /** Kitchen board: New | Preparing side by side, Ready as a strip on top. */
   kitchenTwoLanes: 720,
+} as const;
+
+/**
+ * Owner website breakpoints (px). Names match Tailwind's, so `md:`, `lg:`, `xl:`
+ * are these exact widths (design/tokens.css resets Tailwind's own list).
+ */
+export const webBreakpoints = {
+  /** Stock table replaces stock cards; Add stock opens as a side drawer. */
+  md: 768,
+  /** Sidebar replaces the top bar. */
+  lg: 1024,
+  /** Recent changes panel sits beside the stock table instead of below it. */
+  xl: 1280,
+} as const;
+
+/* ------------------------------------------------------------------ */
+/* Stock level bar (owner website)                                      */
+/* ------------------------------------------------------------------ */
+
+export const stockLevel = {
+  /**
+   * The bar is full at threshold x barScale, so the low-level tick sits at
+   * 1 / barScale (16.7%) of every bar and the column scans as one line.
+   * 6 keeps seed stock (3-10x its threshold) spread out instead of all-full.
+   * fill% = min(quantity / (threshold * barScale), 1) * 100.
+   * threshold 0 → bar full, no tick.
+   */
+  barScale: 6,
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -368,6 +435,15 @@ export const timing = {
   backOnlineMs: 3_000,
   /** Waiter phone buzz when one of their orders turns Ready. */
   readyVibrateMs: 400,
+  /** Owner website: a row/entry that just changed live — tint holds, then fades. */
+  rowFlashHoldMs: 1_500,
+  rowFlashFadeMs: 1_500,
+  /** The "−0.5 kg" change shown next to a quantity that just changed. */
+  deltaShowMs: 6_000,
+  /** Toast after Add stock. */
+  toastMs: 5_000,
+  /** Stock level bar width transition. */
+  levelBarMs: 400,
 } as const;
 
 export const tokens = {
@@ -387,6 +463,8 @@ export const tokens = {
   touch,
   size,
   breakpoints,
+  webBreakpoints,
+  stockLevel,
   timing,
 } as const;
 

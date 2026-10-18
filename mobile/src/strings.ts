@@ -187,6 +187,8 @@ export const strings = {
     signedOutBody: 'Sign in again to send this order.',
     signIn: 'Sign in',
     otherBody: 'Something went wrong on our side. Try again.',
+    stockTitle: 'Not enough stock',
+    stockHint: 'Lower the quantity or remove the item, then send.',
     emptyTitle: 'No items yet',
     emptyBody: 'Add something from the menu.',
     backToMenu: 'Back to menu',

@@ -97,6 +97,15 @@ Slice 3 checks (all WCAG AA). Kitchen lane headers on the cream100 lane fill: bl
 `success` 6.56. Paid line: teal700 on `surfaceMuted` 6.47. Splash / icon dot:
 `primarySoft` on `primary` 5.23.
 
+Slice 4 checks (owner website). Stock level bar (non-text, 3:1): `levelFill` on
+`levelTrack` 5.60, `levelFillLow` on `levelTrack` 6.40, `levelTick` on surface 3.75 and
+on `primarySoft` (live-change row tint) 3.28. Text on the row tint `primarySoft`: `text`
+14.24, `textMuted` 5.74, `textSubtle` 4.97, `danger` 6.56. Text on the low-stock chip /
+tile `dangerSoft`: `text` 13.31, `textMuted` 5.37, `textSubtle` 4.64. Sidebar active
+item: `primary` on `primarySoft` 5.23. Login brand panel: white on `primary` 5.98,
+`primarySoft` on `primary` 5.23. The bar's track is decorative (the fill and the tick
+carry the meaning, and the number is always printed next to it).
+
 ### Dark mode later
 
 Screens use `colors.*` (semantic), never `palette.*` (raw). To add dark mode, add a
@@ -121,6 +130,17 @@ timer, and `fontSize.xl` (22) for notes. The action buttons are `touch.kitchenAc
 (72) tall. Layout switches at `breakpoints.kitchenThreeLanes` (1100) and
 `breakpoints.kitchenTwoLanes` (720). Timer thresholds and animation durations live in
 `timing` (e.g. `timing.overdueAfterMinutes` = 10).
+
+## Owner website (slice 4)
+
+Laptop first (designed at 1440 and 1280), usable at 390. Tokens added for it:
+`size.sidebar` 240, `size.topBar` 64, `size.content` 1120, `size.sidePanel` 320,
+`size.drawer` 440, `size.loginCard` 420, `size.brandMarkSm` 36, `size.avatar` 40,
+`size.levelBar` 8, `size.levelTick` 16, `size.levelTickWidth` 2, `size.flagEdge` 4,
+`size.stockQtyCol` 112, `size.stockStatusCol` 88, `size.phoneActionBar` 96;
+`webBreakpoints` md 768 / lg 1024 / xl 1280; `stockLevel.barScale` 6; colors `levelTrack`, `levelFill`,
+`levelFillLow`, `levelTick`; timings `rowFlashHoldMs`, `rowFlashFadeMs`, `deltaShowMs`,
+`toastMs`, `levelBarMs`. Screens: `screens/04-web-shell.md`, `screens/04-stock.md`.
 
 ## Touch
 
@@ -151,25 +171,7 @@ const styles = StyleSheet.create({
 });
 ```
 
-**Tailwind (web)** — import in `tailwind.config.ts` (Tailwind v4: point to it with
-`@config` in the CSS) and add `px`:
-
-```ts
-import { colors, statusColors, spacing, radius, fontSize, lineHeight, shadows, fontFamily } from '../design/tokens';
-
-const px = <T extends Record<string, number>>(o: T) =>
-  Object.fromEntries(Object.entries(o).map(([k, v]) => [k, `${v}px`]));
-
-export default {
-  theme: {
-    colors: { ...colors, status: statusColors },        // bg-status-ready-bg text-status-ready-fg
-    spacing: px(spacing),
-    borderRadius: px(radius),
-    fontSize: Object.fromEntries(
-      Object.entries(fontSize).map(([k, v]) => [k, [`${v}px`, `${lineHeight[k as keyof typeof lineHeight]}px`]]),
-    ),
-    boxShadow: Object.fromEntries(Object.entries(shadows).map(([k, v]) => [k, v.css])),
-    fontFamily: { sans: [...fontFamily.sans] },
-  },
-};
-```
+**Tailwind (web)** — Tailwind v4 reads `design/tokens.css`, generated from `tokens.ts`
+by `node design/build-tokens-css.mts`. Setup, class names (`bg-primary`,
+`text-text-muted`, `p-4`, `w-sidebar`, `lg:`) and rules: **`web-tailwind.md`**.
+After changing `tokens.ts`, regenerate and commit `tokens.css` too.

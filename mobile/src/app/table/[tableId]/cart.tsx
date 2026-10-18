@@ -1,7 +1,6 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router, useLocalSearchParams, usePreventRemove } from 'expo-router';
-import { randomUUID } from 'expo-crypto';
-import { useEffect, useRef, useState } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Animated,
   Keyboard,
@@ -32,13 +31,30 @@ import { colors, radius, shadow, size, spacing, tabularNums, text, touch } from 
 const s = strings.cart;
 const NOTE_COUNT_FROM = 100;
 
-type SendError = { kind: 'network' } | { kind: 'session' } | { kind: 'other'; message: string };
+type SendError =
+  | { kind: 'network' }
+  | { kind: 'session' }
+  /** The order itself was refused (e.g. not enough stock). Sending it unchanged fails again. */
+  | { kind: 'rejected'; title: string; message: string }
+  | { kind: 'other'; message: string };
 type SentOrder = { id: number; tableNumber: number; lines: DraftLine[]; total: number };
 
-/** Session/permission problems sign the waiter out; network trouble retries; anything else shows the server's message. */
+/**
+ * Session/permission problems sign the waiter out; network trouble retries; place_order's own
+ * refusals (22023, e.g. "Not enough Beef for 2 × Beef Tibs") show its message as-is;
+ * anything else shows the server's message.
+ */
 function classify(status: number, code: string, message: string): SendError {
   if (status === 0 || status >= 500) return { kind: 'network' };
   if (status === 401 || code === '42501' || code === 'PGRST301' || code === 'PGRST303') return { kind: 'session' };
+  if (code === '22023' && message) {
+    const stock = message.startsWith('Not enough');
+    return {
+      kind: 'rejected',
+      title: stock ? s.stockTitle : s.sendFailedTitle,
+      message: stock ? `${message.replace(/\.$/, '')}. ${s.stockHint}` : message,
+    };
+  }
   return { kind: 'other', message: message || s.otherBody };
 }
 
@@ -57,9 +73,6 @@ export default function CartScreen() {
   const [focusNote, setFocusNote] = useState<number | null>(null);
   const [keyboardOpen, setKeyboardOpen] = useState(false);
   const [panelHeight, setPanelHeight] = useState(0);
-  // Idempotency key: made on the first Send tap, reused on every retry of the same order,
-  // so a retry after a timeout returns the order the first call created instead of a second one.
-  const clientRef = useRef<string | null>(null);
 
   useEffect(() => {
     const show = Keyboard.addListener('keyboardDidShow', () => setKeyboardOpen(true));
@@ -89,8 +102,6 @@ export default function CartScreen() {
 
   const edit = (fn: () => void) => {
     setSendError(null);
-    // The order changed, so it is a different order: the next Send gets a new key.
-    clientRef.current = null;
     fn();
   };
 
@@ -100,18 +111,16 @@ export default function CartScreen() {
     setSendError(null);
     setSending(true);
     const items = lines.map((l) => ({ menu_item_id: l.menuItemId, quantity: l.quantity, note: l.note.trim() }));
-    clientRef.current ??= randomUUID();
     const { data, error, status } = await supabase.rpc('place_order', {
       p_table_id: tableId,
       p_items: items,
-      p_client_ref: clientRef.current,
+      p_client_ref: draft.clientRefFor(tableId, items),
     });
     setSending(false);
     if (error || data === null) {
       setSendError(classify(status, error?.code ?? '', error?.message ?? ''));
       return;
     }
-    clientRef.current = null;
     setSent({ id: data, tableNumber, lines: lines.map((l) => ({ ...l, note: l.note.trim() })), total });
     draft.clear();
   };
@@ -132,6 +141,8 @@ export default function CartScreen() {
       <Banner title={s.sendFailedTitle} body={s.networkBody} />
     ) : sendError.kind === 'session' ? (
       <Banner title={s.signedOutTitle} body={s.signedOutBody} actionLabel={s.signIn} onAction={signInAgain} />
+    ) : sendError.kind === 'rejected' ? (
+      <Banner title={sendError.title} body={sendError.message} />
     ) : (
       <Banner title={s.sendFailedTitle} body={sendError.message} />
     )

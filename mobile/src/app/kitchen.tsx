@@ -102,6 +102,35 @@ const animateLayout = () => LayoutAnimation.configureNext(LayoutAnimation.Preset
 
 const byCreated = (a: Ticket, b: Ticket) => a.createdAt.localeCompare(b.createdAt) || a.id - b.id;
 
+const rank = (status: LaneStatus) => KITCHEN_STATUSES.indexOf(status);
+
+/**
+ * Lays a fresh board snapshot over the live board.
+ *
+ * The snapshot is the truth for every order nothing touched while it was in flight. For an
+ * order a Realtime event (or the cook's own tap) touched meanwhile, we can't tell whether the
+ * snapshot was read before or after that change, so we keep whichever state is further along:
+ * statuses only move forward, and anything the board already removed or is animating out stays
+ * that way. Orders added during the fetch (an INSERT fetched by `fetchOne`) are kept even if the
+ * snapshot was read before they existed. Tickets already sliding out finish their animation.
+ */
+function mergeBoard(snapshot: Ticket[], prev: Board | null, touched: ReadonlySet<number>): Board {
+  const next: Board = new Map();
+  for (const t of snapshot) {
+    if (!touched.has(t.id)) {
+      next.set(t.id, t);
+      continue;
+    }
+    const cur = prev?.get(t.id);
+    if (!cur) continue; // removed by a change newer than the snapshot
+    next.set(t.id, cur.leaving || rank(cur.status) >= rank(t.status) ? cur : t);
+  }
+  for (const [id, cur] of prev ?? []) {
+    if (!next.has(id) && (touched.has(id) || cur.leaving)) next.set(id, cur);
+  }
+  return next;
+}
+
 export default function KitchenScreen() {
   useKeepAwake();
   useOrientationLock('landscape');
@@ -123,6 +152,12 @@ export default function KitchenScreen() {
     boardRef.current = board;
   }, [board]);
 
+  // Board refetches can overlap (focus + SUBSCRIBED, Retry now). Each takes a number and only
+  // the newest may write. `touched` collects the orders live changes updated since that newest
+  // refetch started, so mergeBoard doesn't let its snapshot undo them.
+  const loadSeq = useRef(0);
+  const touched = useRef<Set<number>>(new Set());
+
   const highlight = useCallback((t: Ticket) => {
     setHighlights((prev) => new Set(prev).add(t.id));
     AccessibilityInfo.announceForAccessibility(k.announceNew(t.tableNumber));
@@ -130,6 +165,7 @@ export default function KitchenScreen() {
 
   /** Puts tickets on the board (or replaces them), keeping the Map keyed by order id. */
   const upsert = useCallback((tickets: Ticket[]) => {
+    for (const t of tickets) touched.current.add(t.id);
     animateLayout();
     setBoard((prev) => {
       const next = new Map(prev ?? []);
@@ -139,6 +175,7 @@ export default function KitchenScreen() {
   }, []);
 
   const markLeaving = useCallback((id: number) => {
+    touched.current.add(id);
     setBoard((prev) => {
       const cur = prev?.get(id);
       if (!prev || !cur || cur.leaving) return prev;
@@ -149,6 +186,7 @@ export default function KitchenScreen() {
   }, []);
 
   const removeNow = useCallback((id: number) => {
+    touched.current.add(id);
     animateLayout();
     setBoard((prev) => {
       if (!prev?.has(id)) return prev;
@@ -162,22 +200,29 @@ export default function KitchenScreen() {
    * Refetch the whole board. Runs on mount and every time the channel reports SUBSCRIBED,
    * because Realtime does not replay events missed while (re)connecting.
    * After the first load, a `sent` order that wasn't on the board gets the arrival highlight.
+   * An older refetch that resolves after a newer one started is dropped; live changes that
+   * landed while the fetch was in flight are merged back in (see mergeBoard).
    */
   const loadBoard = useCallback(
     async (opts?: { announceBackOnline?: boolean }) => {
+      const seq = ++loadSeq.current;
+      const changed = new Set<number>();
+      touched.current = changed;
       let tickets: Ticket[];
       try {
         tickets = await fetchBoard();
       } catch {
-        if (!boardRef.current) setLoadError(true);
+        if (seq === loadSeq.current && !boardRef.current) setLoadError(true);
         return;
       }
+      if (seq !== loadSeq.current) return;
       const before = boardRef.current;
       if (before) {
-        for (const t of tickets) if (t.status === SENT && !before.has(t.id)) highlight(t);
+        // Orders a live event brought in were already highlighted by onChange.
+        for (const t of tickets) if (t.status === SENT && !before.has(t.id) && !changed.has(t.id)) highlight(t);
       }
       animateLayout();
-      setBoard(new Map(tickets.map((t) => [t.id, t])));
+      setBoard((prev) => mergeBoard(tickets, prev, changed));
       setLoadError(false);
       if (opts?.announceBackOnline) setBackOnline(true);
     },

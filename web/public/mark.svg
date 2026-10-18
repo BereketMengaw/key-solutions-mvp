@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!--
+  Key Solutions brand mark — master source. The app icon (icon.png) is this file.
+  Geometry, in a 128 x 128 box:
+    - Tile: full-bleed berbere (#B23A1A, tokens: colors.primary). The OS rounds corners.
+    - "K": one closed path, 80 x 100 units, stem 20 units wide. Drawn as a path, not
+      text, so it renders the same with or without fonts installed.
+    - Key bit: a dot (#FBEDE7, tokens: colors.primarySoft) at the K's lower right,
+      as on the login screen BrandMark.
+  build.sh makes each variant by changing the <g id="mark"> scale, dropping the tile
+  (transparent variants) and, for the monochrome icon, whitening the dot.
+  Regenerate PNGs: design/brand/build.sh
+-->
+<svg xmlns="http://www.w3.org/2000/svg" width="1024" height="1024" viewBox="0 0 128 128">
+  <rect id="tile" x="0" y="0" width="128" height="128" fill="#B23A1A"/>
+  <g id="mark" transform="translate(64 64) scale(0.56) translate(-57 -58)">
+    <path fill="#FFFFFF" d="M0 0 H20 V36 L53.7 0 H78 L41.1 39.5 L80 100 H56.2 L27 54.5 L20 62 V100 H0 Z"/>
+    <circle fill="#FBEDE7" cx="104" cy="104" r="12"/>
+  </g>
+</svg>
