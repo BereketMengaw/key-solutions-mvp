@@ -1,6 +1,6 @@
 # Slice 1 — Backend, menu and logins
 
-**Status:** awaiting Bereket's approval
+**Status:** done 2026-10-18 — code-quality PASS
 **Agents:** `ui-designer` (tokens only), `backend`
 
 ## Goal
