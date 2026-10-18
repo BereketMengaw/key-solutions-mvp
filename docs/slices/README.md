@@ -5,7 +5,7 @@ Each spec has: goal, screens, data, and a "Done when" test run for real.
 
 | # | Slice | Done when | Status |
 |---|---|---|---|
-| 0 | Team setup | Repo skeleton, agents, CLAUDE.md, Supabase project linked | in progress |
+| 0 | Team setup | Repo skeleton, agents, CLAUDE.md, Supabase project linked | done |
 | 1 | Backend + menu + logins | Waiter, cook and owner logins work; menu and tables seeded | todo |
 | 2 | Waiter app | Log in → pick table → add items → send; order saved | todo |
 | 3 | Cook screen | Order appears live on tablet; Ready shows on waiter's phone | todo |
