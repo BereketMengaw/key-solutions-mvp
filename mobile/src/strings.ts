@@ -1,11 +1,23 @@
-// Every UI string in the app. Amharic will be added as a second object with the same keys.
+// Every UI string in the app: English (`en`) and Amharic (`am`) with the same keys.
+// `am` is typed as `Strings`, so a missing or extra Amharic key fails typecheck.
+// Screens read the active language with `useT()` from '@/lib/i18n'.
 import type { OrderStatus, PaymentMethod, Role } from '@shared/constants';
 
 const plural = (n: number, one: string, many: string) => (n === 1 ? one : many);
 
-export const strings = {
+/** "1,370", "70", "12.50". Western digits in both languages. No Intl: Hermes differs across Android builds. */
+const amount = (n: number) => n.toFixed(Number.isInteger(n) ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+
+const en = {
+  language: {
+    a11ySwitch: 'Language',
+    a11yEnglish: 'English',
+    a11yAmharic: 'Amharic',
+  },
+
   common: {
     appName: 'Key Solutions',
+    money: (n: number) => `${amount(n)} ETB`,
     signOut: 'Sign out',
     signingOut: 'Signing out…',
     cancel: 'Cancel',
@@ -248,3 +260,269 @@ export const strings = {
     noRoleBody: 'Ask your manager to give it a role, then sign in again.',
   },
 } as const;
+
+/** Same shape as `en`, with every literal widened to `string` so another language can fill it. */
+type Widen<T> = T extends string
+  ? string
+  : T extends (...args: infer A) => infer R
+    ? (...args: A) => Widen<R>
+    : { readonly [K in keyof T]: Widen<T[K]> };
+
+export type Strings = Widen<typeof en>;
+
+// Amharic: everyday Addis restaurant talk, not a word-for-word copy of the English.
+// Buttons use the short imperative (ላክ, አክል); sentences use the polite form, which reads
+// the same for every waiter and cook.
+const am: Strings = {
+  language: {
+    a11ySwitch: 'ቋንቋ',
+    a11yEnglish: 'እንግሊዝኛ',
+    a11yAmharic: 'አማርኛ',
+  },
+
+  common: {
+    appName: 'Key Solutions',
+    money: (n: number) => `${amount(n)} ብር`,
+    signOut: 'ውጣ',
+    signingOut: 'በመውጣት ላይ…',
+    cancel: 'ይቅር',
+    tryAgain: 'እንደገና ሞክር',
+    retry: 'እንደገና ሞክር',
+    back: 'ተመለስ',
+    total: 'ጠቅላላ',
+    loading: 'በመጫን ላይ',
+    checkConnection: 'ኢንተርኔት መኖሩን አረጋግጠው እንደገና ይሞክሩ።',
+    cantReachServer: 'ከሰርቨሩ ጋር መገናኘት አልተቻለም',
+    table: (number: number) => `ጠረጴዛ ${number}`,
+    itemCount: (n: number) => `${n} እቃ`,
+    qtyLine: (qty: number, item: string) => `${qty} × ${item}`,
+  },
+
+  startup: {
+    signOut: 'ውጣ',
+  },
+
+  login: {
+    tagline: 'የምግብ ቤትዎ ትዕዛዝ፣ ኩሽና እና ክምችት በአንድ ቦታ።',
+    heading: 'ግባ',
+    subheading: 'ሥራ አስኪያጁ የሰጠዎትን አካውንት ይጠቀሙ።',
+    emailLabel: 'ኢሜይል',
+    emailPlaceholder: 'name@restaurant.com',
+    passwordLabel: 'የይለፍ ቃል',
+    showPassword: 'የይለፍ ቃሉን አሳይ',
+    hidePassword: 'የይለፍ ቃሉን ደብቅ',
+    submit: 'ግባ',
+    submitting: 'በመግባት ላይ…',
+    emailEmpty: 'ኢሜይል ያስገቡ።',
+    emailInvalid: 'ትክክለኛ ኢሜይል ያስገቡ፤ ለምሳሌ name@restaurant.com',
+    passwordEmpty: 'የይለፍ ቃል ያስገቡ።',
+    wrongTitle: 'ኢሜይል ወይም የይለፍ ቃል ተሳስቷል',
+    wrongBody: 'አረጋግጠው እንደገና ይሞክሩ።',
+    tooManyTitle: 'ብዙ ጊዜ ተሞክሯል',
+    tooManyBody: 'ትንሽ ቆይተው እንደገና ይሞክሩ።',
+    footer: 'Key Solutions · አዲስ አበባ',
+  },
+
+  tabs: {
+    tables: 'ጠረጴዛዎች',
+    myOrders: 'የእኔ ትዕዛዞች',
+    a11yMyOrdersReady: (n: number) => `የእኔ ትዕዛዞች፣ ${n} ዝግጁ`,
+  },
+
+  live: {
+    paused: 'የቀጥታ መረጃ ተቋርጧል። እንደገና በመገናኘት ላይ…',
+  },
+
+  payment: {
+    title: (number: number) => `ጠረጴዛ ${number} — ክፍያ ተቀበል`,
+    subtitle: (id: number, total: string) => `ትዕዛዝ #${id} · ${total}`,
+    question: 'በምን ተከፈለ?',
+    note: 'የተከፈለበትን መንገድ ብቻ ይመዘግባል። በዚህ መተግበሪያ ገንዘብ አይተላለፍም።',
+    confirm: 'ክፍያውን አረጋግጥ',
+    saving: 'በመመዝገብ ላይ…',
+    failed: 'ክፍያውን መመዝገብ አልተቻለም። ኢንተርኔቱን አረጋግጠው እንደገና ይሞክሩ።',
+  },
+
+  paymentMethods: {
+    cash: 'ጥሬ ገንዘብ',
+    telebirr: 'ቴሌብር',
+    cbe_birr: 'ሲቢኢ ብር',
+  },
+
+  kitchen: {
+    eyebrow: 'ኩሽና',
+    nameFallback: 'ምግብ አብሳይ',
+    a11yTime: (time: string) => `ሰዓት ${time}`,
+    lanes: { sent: 'አዲስ', preparing: 'እየተዘጋጀ ነው', ready: 'ዝግጁ ነው' },
+    a11yLane: (lane: string, n: number) => `${lane}፣ ${n} ትዕዛዝ`,
+    newTag: 'አዲስ',
+    meta: (id: number, waiter: string, time: string) => `#${id} · ${waiter} · ${time}`,
+    waiterFallback: 'አስተናጋጅ',
+    qty: (n: number) => `${n}×`,
+    note: (note: string) => `“${note}”`,
+    justNow: 'አሁን',
+    minutes: (m: number) => `${m} ደቂቃ`,
+    hours: (h: number, m: number) => `${h} ሰዓት ${m} ደቂቃ`,
+    late: (timer: string) => `${timer} · ዘግይቷል`,
+    startPreparing: 'ማዘጋጀት ጀምር',
+    starting: 'በመጀመር ላይ…',
+    markReady: 'ዝግጁ ነው በል',
+    markingReady: 'በመመዝገብ ላይ…',
+    readyMeta: (items: string, waiter: string) => `${items} · ${waiter}`,
+    waitingPickup: 'አስተናጋጁን እየጠበቀ ነው',
+    quietTitle: 'ኩሽናው ፀጥ ብሏል',
+    quietBody: 'አስተናጋጅ ትዕዛዝ እንደላከ ወዲያው እዚህ ይታያል።',
+    noNew: 'አዲስ ትዕዛዝ የለም',
+    nothingCooking: 'የሚዘጋጅ ትዕዛዝ የለም',
+    nothingReady: 'የሚወሰድ ትዕዛዝ የለም',
+    connection: {
+      connecting: 'በመገናኘት ላይ…',
+      live: 'በቀጥታ',
+      reconnecting: 'እንደገና በመገናኘት ላይ…',
+      offline: 'ኢንተርኔት የለም',
+    },
+    a11yConnection: (state: string) => `ግንኙነት፦ ${state}`,
+    lostTitle: 'ግንኙነቱ ተቋርጧል',
+    lostBody: 'እስኪመለስ ድረስ አዲስ ትዕዛዝ አይታይም። እንደገና እየሞከርን ነው…',
+    retryNow: 'አሁን ሞክር',
+    backOnline: 'ግንኙነቱ ተመልሷል። ሁሉም ትዕዛዞች ወቅታዊ ናቸው።',
+    updateFailed: (number: number) => `ጠረጴዛ ${number}ን ማዘመን አልተቻለም። ቁልፉን እንደገና ይንኩ።`,
+    loadErrorTitle: 'ትዕዛዞቹን መጫን አልተቻለም',
+    announceNew: (number: number) => `አዲስ ትዕዛዝ፣ ጠረጴዛ ${number}`,
+    a11yTicket: (table: number, status: string, timer: string, items: string, late: boolean) =>
+      `ጠረጴዛ ${table}፣ ${status}፣ ${timer}፣ ${items}${late ? '፣ ዘግይቷል' : ''}`,
+    a11ySentAgo: (m: number) => (m === 0 ? 'አሁን የተላከ' : `ከ${m} ደቂቃ በፊት የተላከ`),
+    a11yItem: (qty: number, name: string, note: string) => `${qty} ${name}${note ? `፣ ማስታወሻ፦ ${note}` : ''}`,
+  },
+
+  tables: {
+    greetingMorning: 'እንደምን አደሩ',
+    greetingAfternoon: 'እንደምን ዋሉ',
+    greetingEvening: 'እንደምን አመሹ',
+    nameFallback: 'አስተናጋጅ',
+    signOutTitle: 'መውጣት ይፈልጋሉ?',
+    signOutMessage: 'ተመልሰው ለመግባት ኢሜይልና የይለፍ ቃል ያስፈልግዎታል።',
+    summary: (free: number, open: number) => `${free} ነፃ · ${open} ትዕዛዝ ያለባቸው`,
+    allFree: (count: number) => `ሁሉም ${count} ጠረጴዛዎች ነፃ ናቸው`,
+    pickTable: 'ጠረጴዛ ይምረጡ',
+    cardLabel: 'ጠረጴዛ',
+    free: 'ነፃ',
+    more: (n: number) => `+${n} ተጨማሪ`,
+    seats: (seats: number) => `${seats} ወንበር`,
+    a11yFree: (n: number, seats: number) => `ጠረጴዛ ${n}፣ ${seats} ወንበር፣ ነፃ`,
+    a11yOpen: (n: number, seats: number, status: string) => `ጠረጴዛ ${n}፣ ${seats} ወንበር፣ ክፍት ትዕዛዝ፣ ${status}`,
+    a11yReady: (n: number, seats: number) => `ጠረጴዛ ${n}፣ ${seats} ወንበር፣ ትዕዛዙ ዝግጁ ነው`,
+    errorTitle: 'ጠረጴዛዎቹን መጫን አልተቻለም',
+    refreshError: 'ማደስ አልተቻለም። ቀድሞ የተጫኑት ጠረጴዛዎች እየታዩ ነው።',
+    emptyTitle: 'ገና ጠረጴዛ የለም',
+    emptyBody: 'ሥራ አስኪያጁ ጠረጴዛ እንዲጨምር ይጠይቁ።',
+  },
+
+  menu: {
+    subtitle: (seats: number) => `አዲስ ትዕዛዝ · ${seats} ወንበር`,
+    clear: 'አጽዳ',
+    clearTitle: 'ትዕዛዙ ይጽዳ?',
+    clearMessage: (number: number) => `የጠረጴዛ ${number} እቃዎች በሙሉ ይወገዳሉ።`,
+    discardTitle: 'ትዕዛዙ ይቅር?',
+    discardMessage: (number: number) => `የጠረጴዛ ${number} እቃዎች ገና ወደ ኩሽና አልተላኩም።`,
+    keepEditing: 'ቀጥል',
+    discard: 'ተወው',
+    tabWithCount: (category: string, count: number) => `${category} · ${count}`,
+    add: 'አክል',
+    reviewOrder: 'ትዕዛዙን እይ',
+    a11yAddOne: (item: string) => `አንድ ${item} አክል`,
+    a11yRemoveOne: (item: string) => `አንድ ${item} ቀንስ`,
+    a11yRemove: (item: string) => `${item} አስወግድ`,
+    a11yItem: (item: string, price: string) => `${item}፣ ${price}`,
+    a11yInOrder: (n: number) => `፣ ${n} በትዕዛዙ ውስጥ`,
+    a11yAddHint: 'አንድ ወደ ትዕዛዙ ያክላል',
+    a11yAdded: (item: string) => `${item} ተጨመረ`,
+    a11yCartBar: (count: string, total: string) => `ትዕዛዙን እይ፣ ${count}፣ ${total}`,
+    errorTitle: 'ሜኑውን መጫን አልተቻለም',
+    emptyTitle: 'ሜኑው ባዶ ነው',
+    emptyBody: 'ሥራ አስኪያጁ ምግብ እንዲጨምር ይጠይቁ።',
+  },
+
+  cart: {
+    title: 'የትዕዛዝ ዝርዝር',
+    subtitle: (number: number, count: string) => `ጠረጴዛ ${number} · ${count}`,
+    addMore: 'ጨምር',
+    each: (price: string) => `አንዱ ${price}`,
+    addNote: 'ማስታወሻ አክል',
+    noteFor: (item: string) => `ለ${item} ማስታወሻ`,
+    notePlaceholder: 'ለኩሽና ማስታወሻ፤ ለምሳሌ ሽንኩርት አይግባበት',
+    noteCount: (n: number) => `${n}/120`,
+    items: 'እቃዎች',
+    send: 'ወደ ኩሽና ላክ',
+    sending: 'በመላክ ላይ…',
+    sendFailedTitle: 'ትዕዛዙን መላክ አልተቻለም',
+    networkBody: 'ኢንተርኔቱን አረጋግጠው እንደገና ይሞክሩ። ወደ ኩሽና ምንም አልተላከም።',
+    signedOutTitle: 'ከአካውንትዎ ወጥተዋል',
+    signedOutBody: 'ይህን ትዕዛዝ ለመላክ እንደገና ይግቡ።',
+    signIn: 'ግባ',
+    otherBody: 'በእኛ በኩል ችግር ተፈጥሯል። እንደገና ይሞክሩ።',
+    stockTitle: 'በቂ ክምችት የለም',
+    stockHint: 'ብዛቱን ቀንሰው ወይም እቃውን አውጥተው እንደገና ይላኩ።',
+    emptyTitle: 'ገና ምንም እቃ የለም',
+    emptyBody: 'ከሜኑው ይምረጡ።',
+    backToMenu: 'ወደ ሜኑ ተመለስ',
+    sentTitle: 'ወደ ኩሽና ተልኳል',
+    sentSubtitle: (number: number, id: number) => `ጠረጴዛ ${number} · ትዕዛዝ #${id}`,
+    cookCanSee: 'ምግብ አብሳዩ አሁኑኑ ያየዋል።',
+    backToTables: 'ወደ ጠረጴዛዎች ተመለስ',
+    viewMyOrders: 'የእኔ ትዕዛዞችን እይ',
+  },
+
+  myOrders: {
+    eyebrow: 'ዛሬ',
+    title: 'የእኔ ትዕዛዞች',
+    statOrders: 'ትዕዛዞች',
+    statOpen: 'ክፍት',
+    statReady: 'ዝግጁ',
+    pickup: 'ዝግጁ ነው — ውሰድ',
+    markServed: 'ቀርቧል በል',
+    markPaid: 'ክፍያ ተቀበል',
+    saving: 'በመመዝገብ ላይ…',
+    servedFailed: (number: number) => `የጠረጴዛ ${number} መቅረብ አልተመዘገበም። እንደገና ይሞክሩ።`,
+    paidWith: (method: string) => `በ${method} ተከፍሏል`,
+    orderMeta: (id: number, time: string) => `ትዕዛዝ #${id} · ${time}`,
+    note: (note: string) => `“${note}”`,
+    moreItems: (n: number) => `+${n} ተጨማሪ እቃ`,
+    emptyTitle: 'ዛሬ ገና ትዕዛዝ የለም',
+    emptyBody: 'ወደ ኩሽና የላኳቸው ትዕዛዞች እዚህ ይታያሉ።',
+    goToTables: 'ወደ ጠረጴዛዎች ሂድ',
+    errorTitle: 'ትዕዛዞችዎን መጫን አልተቻለም',
+    refreshError: 'ማደስ አልተቻለም። ቀድሞ የተጫኑት ትዕዛዞች እየታዩ ነው።',
+  },
+
+  status: {
+    sent: 'ተልኳል',
+    preparing: 'እየተዘጋጀ ነው',
+    ready: 'ዝግጁ ነው',
+    served: 'ቀርቧል',
+    paid: 'ተከፍሏል',
+  },
+  statusA11y: (label: string) => `ሁኔታ፦ ${label}`,
+
+  roles: {
+    waiter: 'አስተናጋጅ',
+    cook: 'ምግብ አብሳይ',
+    manager: 'ሥራ አስኪያጅ',
+    owner: 'ባለቤት',
+  },
+
+  wrongRole: {
+    kitchenTitle: 'ይህ አካውንት የኩሽና ነው',
+    kitchenBody: 'የኩሽና ትዕዛዞች በኩሽናው ታብሌት ላይ ይከፈታሉ። በዚህ ስልክ ትዕዛዝ ለመቀበል በአስተናጋጅ አካውንት ይግቡ።',
+    websiteTitle: 'ይህ አካውንት የድረ-ገጹ ነው',
+    websiteBody:
+      'ሽያጭ፣ ክምችት እና የቀጥታ ትዕዛዞች በKey Solutions ድረ-ገጽ ላይ ናቸው። በዚህ ስልክ ትዕዛዝ ለመቀበል በአስተናጋጅ አካውንት ይግቡ።',
+    noRoleTitle: 'ይህ አካውንት ገና አልተዘጋጀም',
+    noRoleBody: 'ሥራ አስኪያጁ ሚና እንዲሰጠው ይጠይቁ፤ ከዚያ እንደገና ይግቡ።',
+  },
+};
+
+export const LANGUAGES = ['en', 'am'] as const;
+export type Language = (typeof LANGUAGES)[number];
+
+export const dictionaries: Record<Language, Strings> = { en, am };

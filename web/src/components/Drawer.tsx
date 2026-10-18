@@ -5,7 +5,7 @@
 import { useEffect, useId, useRef, type ReactNode } from 'react';
 import { Icon } from '@/components/icons';
 import { cx } from '@/components/ui';
-import { s } from '@/lib/strings';
+import { useStrings } from '@/components/LangProvider';
 
 const EXIT_MS = 250; // timing.enterMs
 
@@ -16,7 +16,7 @@ export function Drawer({
   busy = false,
   title,
   subtitle,
-  closeLabel = s.common.close,
+  closeLabel,
   hideHeader = false,
   footer,
   children,
@@ -39,6 +39,7 @@ export function Drawer({
   /** Where focus goes after closing (defaults to whatever had focus when it opened). */
   returnFocusRef?: React.RefObject<HTMLElement | null>;
 }) {
+  const s = useStrings();
   const ref = useRef<HTMLDialogElement>(null);
   const titleId = useId();
   const opener = useRef<Element | null>(null);
@@ -114,7 +115,7 @@ export function Drawer({
             <button
               type="button"
               onClick={onClose}
-              aria-label={closeLabel}
+              aria-label={closeLabel ?? s.common.close}
               className="absolute top-3 right-3 size-12 rounded-full grid place-items-center text-text-muted hover:bg-surface-muted"
             >
               <Icon name="close" className="size-icon-lg" />
@@ -132,7 +133,7 @@ export function Drawer({
               type="button"
               onClick={onClose}
               disabled={busy}
-              aria-label={closeLabel}
+              aria-label={closeLabel ?? s.common.close}
               className="-mt-2 -mr-2 size-12 flex-none rounded-full grid place-items-center text-text-muted hover:bg-surface-muted disabled:cursor-not-allowed disabled:opacity-50"
             >
               <Icon name="close" className="size-icon-lg" />

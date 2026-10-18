@@ -1,8 +1,3 @@
-/** "1,370 ETB", "70 ETB", "12.50 ETB". No Intl: Hermes differs across Android builds. */
-export function formatEtb(n: number): string {
-  return `${n.toFixed(Number.isInteger(n) ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',')} ETB`;
-}
-
 /** 24-hour "HH:mm" in the phone's local time. */
 export function formatTime(iso: string): string {
   const d = new Date(iso);
@@ -10,9 +5,16 @@ export function formatTime(iso: string): string {
   return `${pad(d.getHours())}:${pad(d.getMinutes())}`;
 }
 
-/** "Beef Tibs" → "BT", "Macchiato" → "Ma". Array.from keeps Ge'ez characters whole. */
+/**
+ * "Beef Tibs" → "BT", "Macchiato" → "Ma", "የበሬ ጥብስ" → "በጥ". Array.from keeps Ge'ez characters whole.
+ * The Amharic possessive prefix "የ" ("of") is dropped, as an English monogram skips "of".
+ */
 export function monogram(name: string): string {
-  const words = name.trim().split(/\s+/).filter(Boolean);
+  const words = name
+    .trim()
+    .split(/\s+/)
+    .filter(Boolean)
+    .map((w) => (w.startsWith('የ') && Array.from(w).length > 2 ? w.slice(1) : w));
   if (words.length >= 2) {
     return words
       .slice(0, 2)

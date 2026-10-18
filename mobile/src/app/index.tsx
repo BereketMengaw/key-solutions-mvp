@@ -1,16 +1,18 @@
 // Startup: read the saved session, load the profile, send the user to the right screen.
 import { router } from 'expo-router';
 import { useCallback, useEffect, useState } from 'react';
-import { ActivityIndicator, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/Text';
 import { BrandMark } from '@/components/BrandMark';
 import { Button } from '@/components/Button';
 import { homeFor, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { strings } from '@/strings';
+import { useT } from '@/lib/i18n';
 import { colors, spacing, text } from '@/theme';
 
 export default function Startup() {
+  const strings = useT();
   const { loadProfile, signOut } = useAuth();
   const [failed, setFailed] = useState(false);
   const [checking, setChecking] = useState(true);

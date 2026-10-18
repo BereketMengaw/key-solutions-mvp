@@ -1,29 +1,32 @@
 import { Ionicons } from '@expo/vector-icons';
 import { router } from 'expo-router';
 import { useEffect, useState } from 'react';
-import { BackHandler, StyleSheet, Text, View } from 'react-native';
+import { BackHandler, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Role } from '@shared/constants';
+import { Text } from '@/components/Text';
 import { Button, type IconName } from '@/components/Button';
 import { useAuth } from '@/lib/auth';
 import { useDraft } from '@/lib/draft';
 import { initials } from '@/lib/format';
-import { strings } from '@/strings';
+import { useT } from '@/lib/i18n';
 import { colors, radius, size, spacing, text } from '@/theme';
 
-const s = strings.wrongRole;
+type VariantKey = 'kitchen' | 'website' | 'noRole';
 
-type Variant = { icon: IconName; title: string; body: string };
-
-const kitchen: Variant = { icon: 'flame-outline', title: s.kitchenTitle, body: s.kitchenBody };
-const website: Variant = { icon: 'stats-chart-outline', title: s.websiteTitle, body: s.websiteBody };
-const noRole: Variant = { icon: 'person-circle-outline', title: s.noRoleTitle, body: s.noRoleBody };
+const icons: Record<VariantKey, IconName> = {
+  kitchen: 'flame-outline',
+  website: 'stats-chart-outline',
+  noRole: 'person-circle-outline',
+};
 
 // Waiters and cooks have their own screens; if one somehow lands here, these are the safe choices.
-const variantByRole: Record<Role, Variant> = { cook: kitchen, manager: website, owner: website, waiter: noRole };
+const variantByRole: Record<Role, VariantKey> = { cook: 'kitchen', manager: 'website', owner: 'website', waiter: 'noRole' };
 
 export default function WrongRole() {
+  const strings = useT();
+  const s = strings.wrongRole;
   const insets = useSafeAreaInsets();
   const { profile, email, signOut } = useAuth();
   const { clear } = useDraft();
@@ -36,7 +39,12 @@ export default function WrongRole() {
   }, []);
 
   // A profile whose role was removed (role = null) gets the "not set up" notice.
-  const variant = profile?.role ? variantByRole[profile.role] : noRole;
+  const key = profile?.role ? variantByRole[profile.role] : 'noRole';
+  const variant = {
+    icon: icons[key],
+    title: s[`${key}Title`],
+    body: s[`${key}Body`],
+  };
   const name = profile?.full_name.trim() ?? '';
 
   const onSignOut = async () => {

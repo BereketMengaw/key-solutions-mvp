@@ -3,15 +3,19 @@ import { redirect } from 'next/navigation';
 import { BrandMark } from '@/components/ui';
 import { getViewer, homeFor } from '@/lib/auth';
 import { safeNext } from '@/lib/safe-next';
-import { s } from '@/lib/strings';
+import { getStrings } from '@/lib/lang-server';
+import { LangSwitch } from '@/components/LangSwitch';
 import { LoginForm } from './LoginForm';
 
-export const metadata: Metadata = { title: s.titles.login };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getStrings()).titles.login };
+}
 
 export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
   const params = await searchParams;
   const viewer = await getViewer();
   if (viewer.kind === 'ok') redirect(homeFor(viewer.role));
+  const s = await getStrings();
 
   return (
     <div className="min-h-screen grid lg:grid-cols-[5fr_7fr]">
@@ -31,7 +35,10 @@ export default async function LoginPage({ searchParams }: PageProps<'/login'>) {
         </div>
       </section>
 
-      <main className="flex flex-col items-center justify-start lg:justify-center px-4 py-8 md:px-6 md:py-12">
+      <main className="relative flex flex-col items-center justify-start lg:justify-center px-4 py-8 md:px-6 md:py-12">
+          <div className="w-full max-w-login-card flex justify-end mb-6 lg:mb-0 lg:absolute lg:top-6 lg:right-8 lg:w-auto">
+            <LangSwitch />
+          </div>
         <div className="w-full max-w-login-card">
           <div className="lg:hidden mb-8">
             <BrandMark large className="shadow-md" />

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { OrderStatus } from '@shared/constants';
-import { strings } from '@/strings';
+import { Text } from '@/components/Text';
+import { useT } from '@/lib/i18n';
 import { radius, size, spacing, statusColors, text } from '@/theme';
 import type { IconName } from './Button';
 
@@ -16,6 +17,7 @@ const icons: Record<OrderStatus, IconName> = {
 
 /** Status pill: always icon + label + color, never color alone. */
 export function StatusBadge({ status, large = false }: { status: OrderStatus; large?: boolean }) {
+  const strings = useT();
   const c = statusColors[status];
   const label = strings.status[status];
   return (

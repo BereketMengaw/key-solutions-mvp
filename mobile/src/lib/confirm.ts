@@ -1,12 +1,10 @@
 import { Alert, Platform } from 'react-native';
 
-import { strings } from '@/strings';
-
 type ConfirmOptions = {
   title: string;
   message: string;
   confirmLabel: string;
-  cancelLabel?: string;
+  cancelLabel: string;
   onConfirm: () => void;
 };
 
@@ -15,7 +13,7 @@ export function confirmDestructive({
   title,
   message,
   confirmLabel,
-  cancelLabel = strings.common.cancel,
+  cancelLabel,
   onConfirm,
 }: ConfirmOptions) {
   if (Platform.OS === 'web') {

@@ -13,7 +13,8 @@
 --   - 3 open orders: Table 3 sent, Table 6 preparing, Table 2 served. Table 4 stays free
 --     for the live demo order.
 --   - One 'order' stock movement per ingredient per order (same maths as place_order),
---     so stock and the movement ledger agree. Beef ends well below its 5 kg threshold.
+--     so stock and the movement ledger agree. Beef ends between about 0.8 and 3.6 kg
+--     whatever the time of day: below its 5 kg threshold, with room for the live 2 Beef Tibs.
 --
 -- Status timestamps always run sent < preparing < ready < served < paid. The orders
 -- triggers stamp now() on every insert/update, so they are switched off inside this
@@ -27,8 +28,9 @@ alter table public.orders disable trigger orders_before_update;
 
 -- Adds an order's lines from "Name:qty|Name:qty" and writes its stock movements the way
 -- place_order does: one 'order' movement per ingredient, quantity x recipe, summed.
--- Lives in pg_temp, so it disappears with this session.
-create function pg_temp.demo_day_lines(p_order bigint, p_tpl text, p_waiter uuid, p_at timestamptz)
+-- Lives in pg_temp (gone with this session) and is dropped at the end anyway; create or
+-- replace so a second run in the same session doesn't fail on it.
+create or replace function pg_temp.demo_day_lines(p_order bigint, p_tpl text, p_waiter uuid, p_at timestamptz)
 returns void
 language sql
 as $f$
@@ -66,12 +68,12 @@ declare
                               'Enqulal Firfir:1|Macchiato:1|Mango juice:1', 'Beef Tibs:1|Buna:2',
                               'Firfir:1|Ful:1|Macchiato:3', 'Chechebsa:2|Tea:1|Macchiato:1'];
   v_lunch     text[] := array['Beef Tibs:2|Shiro Wot:1|Macchiato:2', 'Kitfo:1|Misir Wot:1|Avocado juice:2',
-                              'Shiro Wot:2|Buna:2', 'Beef Tibs:1|Kitfo:1|Spris:2',
+                              'Shiro Wot:2|Buna:2', 'Kitfo:1|Shiro Wot:1|Spris:2',
                               'Misir Wot:1|Shiro Wot:1|Mango juice:1|Tea:1'];
   v_afternoon text[] := array['Macchiato:3', 'Spris:2|Buna:1', 'Avocado juice:1|Mango juice:1',
                               'Buna:4|Tea:2', 'Shiro Wot:1|Macchiato:1'];
-  v_dinner    text[] := array['Beef Tibs:2|Kitfo:1|Buna:3', 'Shiro Wot:1|Misir Wot:1|Tea:2',
-                              'Kitfo:1|Mango juice:2', 'Beef Tibs:1|Shiro Wot:2|Macchiato:2'];
+  v_dinner    text[] := array['Beef Tibs:1|Kitfo:1|Buna:3', 'Shiro Wot:1|Misir Wot:1|Tea:2',
+                              'Kitfo:1|Mango juice:2', 'Shiro Wot:2|Misir Wot:1|Macchiato:2'];
   v_counts  int[] := array[0, 0, 0, 0];   -- orders so far per part of the day
   v_start   timestamptz;
   v_end     timestamptz;
@@ -105,7 +107,7 @@ begin
     v_day::timestamp at time zone v_tz,
     least((v_day + time '07:00')::timestamp at time zone v_tz, v_end - interval '3 hours'));
   if v_end <= v_start then
-    raise exception 'Too early in the day (Addis) for a demo day; try after 01:00.';
+    raise exception 'Too early in the day (Addis) for a demo day; try again after 00:30.';
   end if;
 
   -- Use the ideal times as they are if the whole day has passed; otherwise squeeze them
@@ -173,11 +175,17 @@ begin
   if v_beef.quantity_on_hand >= v_beef.low_stock_threshold then
     raise exception 'Beef ended at % (not low); demo day not saved.', v_beef.quantity_on_hand;
   end if;
+  -- The live demo order (2 Beef Tibs = 0.5 kg) must still fit.
+  if v_beef.quantity_on_hand < 0.5 then
+    raise exception 'Beef ended at % (too low for the live 2 Beef Tibs); demo day not saved.', v_beef.quantity_on_hand;
+  end if;
 end;
 $$;
 
 alter table public.orders enable trigger orders_before_insert;
 alter table public.orders enable trigger orders_before_update;
+
+drop function pg_temp.demo_day_lines(bigint, text, uuid, timestamptz);
 
 commit;
 

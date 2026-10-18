@@ -2,11 +2,12 @@
 
 import { useRouter } from 'next/navigation';
 import { Button, EmptyState } from '@/components/ui';
-import { s } from '@/lib/strings';
+import { useStrings } from '@/components/LangProvider';
 
 /** The server couldn't read the profile (network): the frame shows, the content offers a retry. */
 export function FrameError() {
   const router = useRouter();
+  const s = useStrings();
   return (
     <div className="bg-surface border border-border rounded-xl py-16 px-6">
       <EmptyState

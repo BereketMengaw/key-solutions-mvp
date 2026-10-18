@@ -27,51 +27,51 @@ insert into public.dining_tables (number, seats) values
 
 -- ---------------------------------------------------------------- menu
 
-insert into public.menu_categories (name, sort_order) values
-  ('Breakfast', 1),
-  ('Main dishes', 2),
-  ('Hot drinks', 3),
-  ('Cold drinks', 4);
+insert into public.menu_categories (name, name_am, sort_order) values
+  ('Breakfast', 'ቁርስ', 1),
+  ('Main dishes', 'ዋና ምግቦች', 2),
+  ('Hot drinks', 'ትኩስ መጠጦች', 3),
+  ('Cold drinks', 'ቀዝቃዛ መጠጦች', 4);
 
-insert into public.menu_items (category_id, name, description, price_etb, sort_order)
-select c.id, m.name, m.description, m.price_etb, m.sort_order
+insert into public.menu_items (category_id, name, name_am, description, price_etb, sort_order)
+select c.id, m.name, m.name_am, m.description, m.price_etb, m.sort_order
 from (values
-  ('Breakfast',   'Firfir',          'Torn injera tossed in spiced berbere sauce',          260.00, 1),
-  ('Breakfast',   'Chechebsa',       'Flatbread pieces with niter kibbeh and berbere',     280.00, 2),
-  ('Breakfast',   'Ful',             'Mashed fava beans with onion, topped with egg',      220.00, 3),
-  ('Breakfast',   'Enqulal Firfir',  'Scrambled eggs with onion and green pepper',         240.00, 4),
-  ('Main dishes', 'Beef Tibs',       'Sautéed beef cubes with onion and rosemary',         650.00, 1),
-  ('Main dishes', 'Kitfo',           'Minced beef with mitmita and niter kibbeh',          720.00, 2),
-  ('Main dishes', 'Shiro Wot',       'Chickpea stew served bubbling with injera',          320.00, 3),
-  ('Main dishes', 'Misir Wot',       'Red lentil stew in berbere sauce with injera',       300.00, 4),
-  ('Hot drinks',  'Macchiato',       'Espresso with steamed milk',                          70.00, 1),
-  ('Hot drinks',  'Buna',            'Traditional Ethiopian coffee from the jebena',        50.00, 2),
-  ('Hot drinks',  'Tea',             'Black tea with spices',                               35.00, 3),
-  ('Cold drinks', 'Mango juice',     'Fresh blended mango',                                140.00, 1),
-  ('Cold drinks', 'Avocado juice',   'Thick fresh avocado',                                150.00, 2),
-  ('Cold drinks', 'Spris',           'Layered avocado and mango juice',                    160.00, 3)
-) as m (category, name, description, price_etb, sort_order)
+  ('Breakfast',   'Firfir', 'ፍርፍር',          'Torn injera tossed in spiced berbere sauce',          260.00, 1),
+  ('Breakfast',   'Chechebsa', 'ጨጨብሳ',       'Flatbread pieces with niter kibbeh and berbere',     280.00, 2),
+  ('Breakfast',   'Ful', 'ፉል',             'Mashed fava beans with onion, topped with egg',      220.00, 3),
+  ('Breakfast',   'Enqulal Firfir', 'እንቁላል ፍርፍር',  'Scrambled eggs with onion and green pepper',         240.00, 4),
+  ('Main dishes', 'Beef Tibs', 'የበሬ ጥብስ',       'Sautéed beef cubes with onion and rosemary',         650.00, 1),
+  ('Main dishes', 'Kitfo', 'ክትፎ',           'Minced beef with mitmita and niter kibbeh',          720.00, 2),
+  ('Main dishes', 'Shiro Wot', 'ሽሮ ወጥ',       'Chickpea stew served bubbling with injera',          320.00, 3),
+  ('Main dishes', 'Misir Wot', 'ምስር ወጥ',       'Red lentil stew in berbere sauce with injera',       300.00, 4),
+  ('Hot drinks',  'Macchiato', 'ማኪያቶ',       'Espresso with steamed milk',                          70.00, 1),
+  ('Hot drinks',  'Buna', 'ቡና',            'Traditional Ethiopian coffee from the jebena',        50.00, 2),
+  ('Hot drinks',  'Tea', 'ሻይ',             'Black tea with spices',                               35.00, 3),
+  ('Cold drinks', 'Mango juice', 'የማንጎ ጭማቂ',     'Fresh blended mango',                                140.00, 1),
+  ('Cold drinks', 'Avocado juice', 'የአቮካዶ ጭማቂ',   'Thick fresh avocado',                                150.00, 2),
+  ('Cold drinks', 'Spris', 'ስፕሪስ',           'Layered avocado and mango juice',                    160.00, 3)
+) as m (category, name, name_am, description, price_etb, sort_order)
 join public.menu_categories c on c.name = m.category;
 
 -- ---------------------------------------------------------------- ingredients
 
-insert into public.ingredients (name, unit, low_stock_threshold) values
-  ('Beef',          'kg',  5),
-  ('Berbere',       'kg',  0.5),
-  ('Niter kibbeh',  'kg',  1),
-  ('Injera',        'pcs', 30),
-  ('Shiro powder',  'kg',  1),
-  ('Red lentils',   'kg',  1),
-  ('Fava beans',    'kg',  1),
-  ('Wheat flour',   'kg',  2),
-  ('Onion',         'kg',  2),
-  ('Eggs',          'pcs', 24),
-  ('Coffee beans',  'kg',  1),
-  ('Tea leaves',    'kg',  0.3),
-  ('Milk',          'L',   5),
-  ('Sugar',         'kg',  2),
-  ('Mango',         'kg',  3),
-  ('Avocado',       'kg',  3);
+insert into public.ingredients (name, name_am, unit, low_stock_threshold) values
+  ('Beef', 'የበሬ ሥጋ',          'kg',  5),
+  ('Berbere', 'በርበሬ',       'kg',  0.5),
+  ('Niter kibbeh', 'ንጥር ቅቤ',  'kg',  1),
+  ('Injera', 'እንጀራ',        'pcs', 30),
+  ('Shiro powder', 'የሽሮ ዱቄት',  'kg',  1),
+  ('Red lentils', 'ምስር',   'kg',  1),
+  ('Fava beans', 'ባቄላ',    'kg',  1),
+  ('Wheat flour', 'የስንዴ ዱቄት',   'kg',  2),
+  ('Onion', 'ሽንኩርት',         'kg',  2),
+  ('Eggs', 'እንቁላል',          'pcs', 24),
+  ('Coffee beans', 'የቡና ፍሬ',  'kg',  1),
+  ('Tea leaves', 'የሻይ ቅጠል',    'kg',  0.3),
+  ('Milk', 'ወተት',          'L',   5),
+  ('Sugar', 'ስኳር',         'kg',  2),
+  ('Mango', 'ማንጎ',         'kg',  3),
+  ('Avocado', 'አቮካዶ',       'kg',  3);
 
 -- Opening stock goes through stock_movements; the trigger sets quantity_on_hand.
 insert into public.stock_movements (ingredient_id, change, reason, created_by)

@@ -18,26 +18,27 @@ import {
 import { timing } from '@design/tokens';
 import type { StockReason } from '@shared/constants';
 import type { Tables } from '@shared/database.types';
+import { useLang, useStrings } from '@/components/LangProvider';
 import { formatQuantity, isLow } from '@/lib/format';
-import { s } from '@/lib/strings';
+import { nameIn } from '@/lib/i18n';
 import { getSupabase } from '@/lib/supabase/client';
 
 export type Ingredient = Pick<
   Tables<'ingredients'>,
-  'id' | 'name' | 'unit' | 'quantity_on_hand' | 'low_stock_threshold'
+  'id' | 'name' | 'name_am' | 'unit' | 'quantity_on_hand' | 'low_stock_threshold'
 >;
 
 /** A live change on a row: the summed delta (shown 6 s) and the row flash. */
 export type RowChange = { delta: number; deltaVisible: boolean; flash: boolean };
 
-export type MovementLine = { name: string; unit: string; change: number };
+export type MovementLine = { name: string; name_am: string; unit: string; change: number };
 export type MovementEntry =
   | { key: string; kind: 'order'; at: string; orderId: number; table: number | null; lines: MovementLine[] }
   | {
       key: string;
       kind: 'restock';
       at: string;
-      ingredient: string;
+      ingredient: { name: string; name_am: string };
       unit: string;
       change: number;
       by: string;
@@ -90,7 +91,7 @@ type MovementRow = {
   note: string;
   order_id: number | null;
   reason: StockReason;
-  ingredients: { name: string; unit: string } | null;
+  ingredients: { name: string; name_am: string; unit: string } | null;
   profiles: { full_name: string } | null;
   orders: { dining_tables: { number: number } | null } | null;
 };
@@ -101,6 +102,7 @@ function groupMovements(rows: MovementRow[]): MovementEntry[] {
   const orders = new Map<number, Extract<MovementEntry, { kind: 'order' }>>();
   for (const r of rows) {
     const name = r.ingredients?.name ?? '';
+    const name_am = r.ingredients?.name_am ?? '';
     const unit = r.ingredients?.unit ?? '';
     if (r.reason === 'order' && r.order_id != null) {
       let entry = orders.get(r.order_id);
@@ -116,13 +118,13 @@ function groupMovements(rows: MovementRow[]): MovementEntry[] {
         orders.set(r.order_id, entry);
         entries.push(entry);
       }
-      entry.lines.push({ name, unit, change: Number(r.change) });
+      entry.lines.push({ name, name_am, unit, change: Number(r.change) });
     } else if (r.reason === 'restock') {
       entries.push({
         key: `r${r.id}`,
         kind: 'restock',
         at: r.created_at,
-        ingredient: name,
+        ingredient: { name, name_am },
         unit,
         change: Number(r.change),
         by: r.profiles?.full_name ?? '',
@@ -136,6 +138,13 @@ function groupMovements(rows: MovementRow[]): MovementEntry[] {
 
 export function StockProvider({ children }: { children: ReactNode }) {
   const supabase = getSupabase();
+  // Announcements are worded when they happen, in the language showing then.
+  const lang = useLang();
+  const strings = useStrings();
+  const langRef = useRef({ lang, strings });
+  useEffect(() => {
+    langRef.current = { lang, strings };
+  });
 
   // Ingredients: the ref is the source of truth (realtime handlers read it synchronously).
   const ingRef = useRef(new Map<number, Ingredient>());
@@ -213,8 +222,10 @@ export function StockProvider({ children }: { children: ReactNode }) {
       commitIngredients();
       animateChange(id, q - row.quantity_on_hand);
       if (wasLow !== nowLow) {
-        const qty = formatQuantity(q, row.unit);
-        setAnnouncement(nowLow ? s.stock.announce.low(row.name, qty) : s.stock.announce.back(row.name, qty));
+        const { lang, strings: s } = langRef.current;
+        const qty = formatQuantity(q, row.unit, lang);
+        const name = nameIn(lang, row);
+        setAnnouncement(nowLow ? s.stock.announce.low(name, qty) : s.stock.announce.back(name, qty));
         if (nowLow) {
           setLowTileFlash(true);
           later(() => setLowTileFlash(false), timing.rowFlashHoldMs);
@@ -233,7 +244,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
       const startedAtPatch = patchSeq.current;
       const { data, error } = await supabase
         .from('ingredients')
-        .select('id, name, unit, quantity_on_hand, low_stock_threshold');
+        .select('id, name, name_am, unit, quantity_on_hand, low_stock_threshold');
       if (seq !== ingFetchSeq.current) return false; // a newer fetch is in flight
       if (error || !data) {
         // Keep showing the last known numbers if we have them.
@@ -268,7 +279,7 @@ export function StockProvider({ children }: { children: ReactNode }) {
       const { data, error } = await supabase
         .from('stock_movements')
         .select(
-          'id, change, created_at, note, order_id, reason, ingredients(name, unit), profiles(full_name), orders(dining_tables(number))',
+          'id, change, created_at, note, order_id, reason, ingredients(name, name_am, unit), profiles(full_name), orders(dining_tables(number))',
         )
         .in('reason', LISTED_REASONS)
         .order('created_at', { ascending: false })

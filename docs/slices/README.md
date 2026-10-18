@@ -11,7 +11,7 @@ Each spec has: goal, screens, data, and a "Done when" test run for real.
 | 3 | Cook screen | Order appears live on tablet; Ready shows on waiter's phone | done |
 | 4 | Stock | Orders deduct ingredients; owner adds stock on web; low stock flagged | done |
 | 5 | Owner dashboard | Sales today, top items, live orders, stock alerts | done |
-| 6 | Polish + demo | Good UI everywhere, Amharic/English, APK on client's phone | in progress |
+| 6 | Polish + demo | Amharic/English switch, APK, website live on Vercel | done |
 
 ## Workflow per slice
 

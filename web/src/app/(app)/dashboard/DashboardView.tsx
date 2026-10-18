@@ -3,18 +3,19 @@
 import type { ReactNode } from 'react';
 import { Icon, type IconName } from '@/components/icons';
 import { Banner, Button, EmptyState, LoadingRegion, Skeleton, cx } from '@/components/ui';
-import { useDashboard, type DashboardLive, type Delta } from '@/lib/dashboard/useDashboard';
-import { formatDateLong, formatEtbNumber, formatWait, minutesSince } from '@/lib/format';
-import { s } from '@/lib/strings';
+import { useLang, useStrings } from '@/components/LangProvider';
+import { isQuietDay, useDashboard, type DashboardLive, type Delta } from '@/lib/dashboard/useDashboard';
+import { formatDateLong, formatEtb, formatEtbNumber, formatWait, minutesSince } from '@/lib/format';
 import { LivePill } from '../stock/parts';
 import { CountUp, flashBg } from './bits';
 import { ChartsSkeleton, PaymentMix, SalesByHour, TopItems } from './Charts';
 import { FloorSkeleton, LiveFloor, StockAlerts, isLate } from './Floor';
 
-const t = s.dashboard;
 const plain = (n: number) => String(n);
 
 export function DashboardView({ serverNow }: { serverNow: number }) {
+  const t = useStrings().dashboard;
+  const lang = useLang();
   const live = useDashboard(serverNow);
   const { data, load, connection, connectionBanner } = live;
 
@@ -23,7 +24,7 @@ export function DashboardView({ serverNow }: { serverNow: number }) {
       <div className="flex items-start justify-between gap-3">
         <div className="min-w-0">
           <h1 className="text-2xl font-bold">{t.title}</h1>
-          <p className="mt-1 text-md text-text-muted">{t.today(formatDateLong(live.now))}</p>
+          <p className="mt-1 text-md text-text-muted">{t.today(formatDateLong(live.now, lang))}</p>
         </div>
         <LivePill state={connection} />
       </div>
@@ -87,14 +88,14 @@ export function DashboardView({ serverNow }: { serverNow: number }) {
         <>
           {!data ? (
             <TilesSkeleton />
-          ) : data.orders_today === 0 ? (
+          ) : isQuietDay(data) ? (
             <Hero />
           ) : (
             <Tiles live={live} />
           )}
 
           <div className="mt-6 grid gap-6 xl:grid-cols-[minmax(0,1fr)_var(--spacing-side-panel)] xl:items-start">
-            <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start xl:flex xl:flex-col xl:col-start-2 xl:row-start-1 min-w-0">
+            <div className="flex flex-col gap-6 md:grid md:grid-cols-2 md:items-start xl:flex xl:flex-col xl:items-stretch xl:col-start-2 xl:row-start-1 min-w-0">
               {data ? (
                 <LiveFloor
                   rows={data.live_floor}
@@ -131,6 +132,7 @@ export function DashboardView({ serverNow }: { serverNow: number }) {
 /* ---------------------------------------------------------------- hero (fresh morning) */
 
 function Hero() {
+  const t = useStrings().dashboard;
   return (
     <div
       data-hero
@@ -150,10 +152,12 @@ function Hero() {
 /* ---------------------------------------------------------------- tiles */
 
 function Tiles({ live }: { live: DashboardLive }) {
+  const t = useStrings().dashboard;
+  const lang = useLang();
   const d = live.data!;
   const average = d.paid_orders > 0 ? Math.round(d.sales_etb / d.paid_orders) : null;
   const oldest = d.live_floor[0];
-  const oldestWait = oldest ? formatWait(minutesSince(oldest.created_at, live.now)) : '';
+  const oldestWait = oldest ? formatWait(minutesSince(oldest.created_at, live.now), lang) : '';
   const oldestLate = oldest ? isLate(oldest, live.now) : false;
   const salesCaption = d.paid_orders === 0 ? t.tiles.salesNone : t.tiles.salesFrom(d.paid_orders);
   const ordersCaption = t.tiles.ordersCaption(d.paid_orders, d.open_orders);
@@ -172,7 +176,7 @@ function Tiles({ live }: { live: DashboardLive }) {
         id="sales"
         icon="cash-outline"
         label={t.tiles.sales}
-        aria={t.tiles.aria(t.tiles.sales, `${formatEtbNumber(d.sales_etb)} ${t.tiles.unit}`, salesCaption)}
+        aria={t.tiles.aria(t.tiles.sales, formatEtb(d.sales_etb, lang), salesCaption)}
         flash={live.flashes.has('tile:sales')}
         enter={enter(0)}
         value={<Money value={d.sales_etb} animate={live.countUp} />}
@@ -198,7 +202,7 @@ function Tiles({ live }: { live: DashboardLive }) {
         id="average"
         icon="pricetag-outline"
         label={t.tiles.average}
-        aria={t.tiles.aria(t.tiles.average, average === null ? t.tiles.dash : `${formatEtbNumber(average)} ${t.tiles.unit}`, avgCaption)}
+        aria={t.tiles.aria(t.tiles.average, average === null ? t.tiles.dash : formatEtb(average, lang), avgCaption)}
         flash={live.flashes.has('tile:avg')}
         enter={enter(2)}
         value={
@@ -238,12 +242,13 @@ function Tiles({ live }: { live: DashboardLive }) {
 }
 
 function Money({ value, animate }: { value: number; animate: boolean }) {
+  const s = useStrings();
   return (
     <>
       <span className="text-2xl md:text-3xl font-bold text-text tabular-nums">
         <CountUp value={value} animate={animate} format={formatEtbNumber} />
       </span>
-      <span className="text-md md:text-lg font-semibold text-text-muted">{t.tiles.unit}</span>
+      <span className="text-md md:text-lg font-semibold text-text-muted">{s.fmt.etb}</span>
     </>
   );
 }

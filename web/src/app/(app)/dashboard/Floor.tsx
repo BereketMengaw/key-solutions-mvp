@@ -10,11 +10,10 @@ import { Banner, Button, LoadingRegion, Skeleton, cx } from '@/components/ui';
 import type { LiveRow } from '@/lib/dashboard/useDashboard';
 import { formatQuantity, formatWait, isLow, isOut, minutesSince } from '@/lib/format';
 import { useStock, type Ingredient } from '@/lib/stock/StockProvider';
-import { s } from '@/lib/strings';
+import { useLang, useStrings } from '@/components/LangProvider';
+import { nameIn } from '@/lib/i18n';
 import { StatusChip } from '../stock/parts';
 import { Card, CardHeader, flashBg } from './bits';
-
-const t = s.dashboard;
 
 /** Pipeline order; the owner sees the waiter's words. Keyed by status so a new status fails typecheck. */
 const GROUPS: Record<OpenOrderStatus, { icon: IconName; chip: string }> = {
@@ -34,6 +33,7 @@ export function isLate(row: Pick<LiveRow, 'status' | 'created_at'>, now: number)
 }
 
 export function StatusBadge({ status }: { status: OpenOrderStatus }) {
+  const t = useStrings().dashboard;
   const g = GROUPS[status];
   return (
     <span className={cx('inline-flex items-center gap-1 py-1 px-3 rounded-full text-sm font-semibold', g.chip)}>
@@ -56,6 +56,7 @@ export function LiveFloor({
   flashes: ReadonlySet<string>;
   entered: ReadonlySet<string>;
 }) {
+  const t = useStrings().dashboard;
   const leavingIds = new Set(leaving.map((r) => r.id));
   const shown = [...rows.filter((r) => !leavingIds.has(r.id)), ...leaving].sort(
     (a, b) => a.created_at.localeCompare(b.created_at) || a.id - b.id,
@@ -129,8 +130,9 @@ function FloorRow({
   enter: boolean;
   leaving: boolean;
 }) {
+  const t = useStrings().dashboard;
   const minutes = minutesSince(row.created_at, now);
-  const wait = formatWait(minutes);
+  const wait = formatWait(minutes, useLang());
   const late = isLate(row, now);
   const waiter = row.waiter_name || null;
   return (
@@ -166,6 +168,7 @@ function FloorRow({
 }
 
 export function FloorSkeleton() {
+  const t = useStrings().dashboard;
   return (
     <Card labelledBy="floor-title" className="overflow-hidden">
       <CardHeader id="floor-title" title={t.floor.title} subtitle={t.floor.subtitle} border />
@@ -186,6 +189,8 @@ export function FloorSkeleton() {
 const urgency = (i: Ingredient) => (i.low_stock_threshold > 0 ? i.quantity_on_hand / i.low_stock_threshold : 0);
 
 export function StockAlerts() {
+  const t = useStrings().dashboard;
+  const lang = useLang();
   const { ingredients, ingredientsState, changes, retryIngredients } = useStock();
   const low = ingredients
     .filter((i) => isLow(i.quantity_on_hand, i.low_stock_threshold))
@@ -193,7 +198,7 @@ export function StockAlerts() {
       (a, b) =>
         Number(isOut(b.quantity_on_hand)) - Number(isOut(a.quantity_on_hand)) ||
         urgency(a) - urgency(b) ||
-        a.name.localeCompare(b.name, 'en'),
+        nameIn(lang, a).localeCompare(nameIn(lang, b), lang),
     );
   const rows = low.slice(0, dashboard.stockAlertRows);
   const loading = ingredientsState === 'loading' && ingredients.length === 0;
@@ -251,19 +256,21 @@ export function StockAlerts() {
           <ul className="divide-y divide-border">
             {rows.map((i) => {
               const out = isOut(i.quantity_on_hand);
-              const threshold = formatQuantity(i.low_stock_threshold, i.unit);
+              const threshold = formatQuantity(i.low_stock_threshold, i.unit, lang);
+              const qty = formatQuantity(i.quantity_on_hand, i.unit, lang);
+              const name = nameIn(lang, i);
               return (
                 <li key={i.id} data-alert={i.name}>
                   <Link
-                    href={`/stock?q=${encodeURIComponent(i.name)}`}
-                    aria-label={out ? t.alerts.ariaOut(i.name) : t.alerts.aria(i.name, formatQuantity(i.quantity_on_hand, i.unit))}
+                    href={`/stock?q=${encodeURIComponent(name)}`}
+                    aria-label={out ? t.alerts.ariaOut(name) : t.alerts.aria(name, qty)}
                     className={cx('relative flex items-center gap-3 px-4 md:px-5 py-3', flashBg(!!changes[i.id]?.flash, 'hover:bg-background'))}
                   >
                     <span aria-hidden="true" className="absolute inset-y-0 left-0 w-flag-edge bg-status-low-stock-fg" />
                     <span className="min-w-0 flex-1">
-                      <span className="block text-md font-semibold text-text">{i.name}</span>
+                      <span className="block text-md font-semibold text-text">{name}</span>
                       <span className="block text-sm text-text-muted">
-                        {out ? t.alerts.none(threshold) : t.alerts.left(formatQuantity(i.quantity_on_hand, i.unit), threshold)}
+                        {out ? t.alerts.none(threshold) : t.alerts.left(qty, threshold)}
                       </span>
                     </span>
                     <StatusChip quantity={i.quantity_on_hand} threshold={i.low_stock_threshold} />

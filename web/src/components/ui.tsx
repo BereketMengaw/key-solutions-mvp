@@ -3,7 +3,7 @@
 import type { ButtonHTMLAttributes, ReactNode, Ref } from 'react';
 import { Icon, type IconName } from '@/components/icons';
 import { initials } from '@/lib/format';
-import { s } from '@/lib/strings';
+import { useStrings } from '@/components/LangProvider';
 
 export function cx(...parts: (string | false | null | undefined)[]): string {
   return parts.filter(Boolean).join(' ');
@@ -170,7 +170,9 @@ export function Skeleton({ className }: { className?: string }) {
   return <div aria-hidden="true" className={cx('bg-surface-muted animate-pulse motion-reduce:animate-none', className)} />;
 }
 
+/** Client components only (reads the language from context). */
 export function LoadingRegion({ children, className }: { children: ReactNode; className?: string }) {
+  const s = useStrings();
   return (
     <div aria-busy="true" className={className}>
       <span className="sr-only">{s.common.loading}</span>

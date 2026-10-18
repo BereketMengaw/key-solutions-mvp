@@ -62,6 +62,7 @@ export type Database = {
           id: number
           low_stock_threshold: number
           name: string
+          name_am: string
           quantity_on_hand: number
           unit: string
         }
@@ -69,6 +70,7 @@ export type Database = {
           id?: never
           low_stock_threshold?: number
           name: string
+          name_am?: string
           quantity_on_hand?: number
           unit: string
         }
@@ -76,6 +78,7 @@ export type Database = {
           id?: never
           low_stock_threshold?: number
           name?: string
+          name_am?: string
           quantity_on_hand?: number
           unit?: string
         }
@@ -85,16 +88,19 @@ export type Database = {
         Row: {
           id: number
           name: string
+          name_am: string
           sort_order: number
         }
         Insert: {
           id?: never
           name: string
+          name_am?: string
           sort_order?: number
         }
         Update: {
           id?: never
           name?: string
+          name_am?: string
           sort_order?: number
         }
         Relationships: []
@@ -108,6 +114,7 @@ export type Database = {
           image_url: string | null
           is_available: boolean
           name: string
+          name_am: string
           price_etb: number
           sort_order: number
         }
@@ -119,6 +126,7 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean
           name: string
+          name_am?: string
           price_etb: number
           sort_order?: number
         }
@@ -130,6 +138,7 @@ export type Database = {
           image_url?: string | null
           is_available?: boolean
           name?: string
+          name_am?: string
           price_etb?: number
           sort_order?: number
         }

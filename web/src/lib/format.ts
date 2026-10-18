@@ -2,6 +2,9 @@
 // Units are always the ingredient's own unit: never convert.
 
 import { stockLevel } from '@design/tokens';
+import type { IngredientUnit } from '@shared/constants';
+import type { Lang } from '@/lib/i18n';
+import { strings } from '@/lib/strings';
 
 const NBSP = ' ';
 const MINUS = '−';
@@ -12,22 +15,27 @@ const qty0 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 0 });
 const qty3 = new Intl.NumberFormat('en-US', { maximumFractionDigits: 3 });
 
 const isPieces = (unit: string) => unit === 'pcs';
+const isUnit = (unit: string): unit is IngredientUnit => unit === 'kg' || unit === 'L' || unit === 'pcs';
 
-/** "5.3 kg", "120 pcs", "1,250 pcs". */
-export function formatQuantity(n: number, unit: string): string {
-  return `${(isPieces(unit) ? qty0 : qty2).format(n)}${NBSP}${unit}`;
+/** The unit as shown: "kg" / "ኪ.ግ", "L" / "ሊትር", "pcs" / "ፍሬ". Unknown units stay as stored. */
+export function unitLabel(unit: string, lang: Lang): string {
+  return isUnit(unit) ? strings[lang].fmt.units[unit] : unit;
+}
+
+/** "5.3 kg", "120 pcs", "1,250 pcs" — "5.3 ኪ.ግ", "120 ፍሬ" in Amharic. */
+export function formatQuantity(n: number, unit: string, lang: Lang): string {
+  return `${(isPieces(unit) ? qty0 : qty2).format(n)}${NBSP}${unitLabel(unit, lang)}`;
 }
 
 /** "+10 kg", "−0.018 kg", "−4 pcs". */
-export function formatDelta(n: number, unit: string): string {
+export function formatDelta(n: number, unit: string, lang: Lang): string {
   const body = (isPieces(unit) ? qty0 : qty3).format(Math.abs(n));
-  return `${n < 0 ? MINUS : '+'}${body}${NBSP}${unit}`;
+  return `${n < 0 ? MINUS : '+'}${body}${NBSP}${unitLabel(unit, lang)}`;
 }
 
-export function unitWord(unit: string): string {
-  if (unit === 'L') return 'litres';
-  if (unit === 'pcs') return 'pieces';
-  return unit;
+/** "litres" / "ሊትር" — for sentences like "How much arrived, in litres." */
+export function unitWord(unit: string, lang: Lang): string {
+  return isUnit(unit) ? strings[lang].fmt.unitWords[unit] : unit;
 }
 
 const hhmm = new Intl.DateTimeFormat('en-GB', {
@@ -37,16 +45,22 @@ const hhmm = new Intl.DateTimeFormat('en-GB', {
   timeZone: TZ,
 });
 const dayKey = new Intl.DateTimeFormat('en-CA', { timeZone: TZ, year: 'numeric', month: '2-digit', day: '2-digit' });
-const dayMonth = new Intl.DateTimeFormat('en-GB', { timeZone: TZ, day: 'numeric', month: 'short' });
+/** Addis calendar parts of a moment (Gregorian): year, month 0–11, day, weekday 0 = Sunday. */
+function addisParts(when: Date | number) {
+  const [y, m, d] = dayKey.format(when).split('-').map(Number);
+  return { month: m - 1, day: d, weekday: new Date(Date.UTC(y, m - 1, d)).getUTCDay() };
+}
 
 /** "14:02" today, "Yesterday 14:02", "12 Oct 14:02" — Addis Ababa time on server and client. */
-export function formatTime(iso: string, now: Date = new Date()): string {
+export function formatTime(iso: string, lang: Lang, now: Date = new Date()): string {
+  const f = strings[lang].fmt;
   const d = new Date(iso);
   const time = hhmm.format(d);
   const day = dayKey.format(d);
   if (day === dayKey.format(now)) return time;
-  if (day === dayKey.format(new Date(now.getTime() - 86_400_000))) return `Yesterday ${time}`;
-  return `${dayMonth.format(d)} ${time}`;
+  if (day === dayKey.format(new Date(now.getTime() - 86_400_000))) return `${f.yesterday} ${time}`;
+  const p = addisParts(d);
+  return `${p.day} ${f.monthsShort[p.month]} ${time}`;
 }
 
 /* ---------------------------------------------------------------- stock rules */
@@ -87,9 +101,9 @@ export function formatEtbNumber(n: number): string {
   return n.toFixed(Number.isInteger(n) ? 0 : 2).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
 }
 
-/** "1,370 ETB", "0 ETB", "70 ETB". */
-export function formatEtb(n: number): string {
-  return `${formatEtbNumber(n)} ETB`;
+/** "1,370 ETB", "0 ETB", "70 ETB" — "1,370 ብር" in Amharic. */
+export function formatEtb(n: number, lang: Lang): string {
+  return `${formatEtbNumber(n)} ${strings[lang].fmt.etb}`;
 }
 
 /** Chart y-axis ticks only: "500", "1K", "1.5K", "12K". */
@@ -100,11 +114,12 @@ export function formatEtbCompact(n: number): string {
 }
 
 /** Kitchen timer words: "Just now", "4 min", "1 h 5 min". Negative (clock skew) counts as 0. */
-export function formatWait(minutes: number): string {
+export function formatWait(minutes: number, lang: Lang): string {
+  const f = strings[lang].fmt;
   const m = Math.max(0, Math.floor(minutes));
-  if (m < 1) return 'Just now';
-  if (m < 60) return `${m} min`;
-  return `${Math.floor(m / 60)} h ${m % 60} min`;
+  if (m < 1) return f.justNow;
+  if (m < 60) return f.minutes(m);
+  return f.hoursMinutes(Math.floor(m / 60), m % 60);
 }
 
 /** Whole minutes since `iso`, never negative. */
@@ -124,11 +139,11 @@ export function formatHourRange(h: number): string {
   return `${formatHour(h)}–${formatHour(h + 1)}`;
 }
 
-const longDate = new Intl.DateTimeFormat('en-GB', { weekday: 'long', day: 'numeric', month: 'long', timeZone: TZ });
-
-/** "Sunday 18 October" in Addis Ababa. */
-export function formatDateLong(now: Date | number): string {
-  return longDate.format(now).replace(',', '');
+/** "Sunday 18 October" / "እሑድ 18 ኦክቶበር" in Addis Ababa (Gregorian calendar in both). */
+export function formatDateLong(now: Date | number, lang: Lang): string {
+  const f = strings[lang].fmt;
+  const p = addisParts(now);
+  return `${f.weekdays[p.weekday]} ${p.day} ${f.months[p.month]}`;
 }
 
 /** "2026-10-18" in Addis Ababa (same as dashboard_today().date). */

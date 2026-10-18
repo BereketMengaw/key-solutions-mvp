@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
 import { forwardRef, useId, useState } from 'react';
-import { StyleSheet, Text, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
+import { StyleSheet, TextInput, View, type TextInputInstance, type TextInputProps } from 'react-native';
 
-import { strings } from '@/strings';
+import { Text } from '@/components/Text';
+import { useLocalFont, useT } from '@/lib/i18n';
 import { colors, lineHeight, radius, size, spacing, text, touch } from '@/theme';
 import { IconButton } from './IconButton';
 
@@ -19,6 +20,8 @@ export const TextField = forwardRef<TextInputInstance, Props>(function TextField
   { label, error, disabled, password, multilineNote, onFocus, onBlur, ...input },
   ref,
 ) {
+  const strings = useT();
+  const localFont = useLocalFont();
   const [focused, setFocused] = useState(false);
   const [hidden, setHidden] = useState(true);
   const labelId = useId();
@@ -63,12 +66,12 @@ export const TextField = forwardRef<TextInputInstance, Props>(function TextField
             setFocused(false);
             onBlur?.(e);
           }}
-          style={[
+          style={localFont([
             multilineNote ? text('sm') : text('md'),
             styles.input,
             multilineNote && styles.noteInput,
             { color: disabled ? colors.textMuted : colors.text },
-          ]}
+          ])}
         />
         {password ? (
           <IconButton

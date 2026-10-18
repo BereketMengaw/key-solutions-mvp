@@ -12,18 +12,21 @@ import { SignOutButton } from '@/components/SignOutButton';
 import { Avatar, BrandMark, cx } from '@/components/ui';
 import { isSigningOut } from '@/lib/session';
 import { useStock } from '@/lib/stock/StockProvider';
-import { roleLabels, s } from '@/lib/strings';
+import { LangSwitch } from '@/components/LangSwitch';
+import { useStrings } from '@/components/LangProvider';
+import type { Strings } from '@/lib/strings';
 import { getSupabase } from '@/lib/supabase/client';
 
 export type FrameUser = { fullName: string; email: string; role: Role } | null;
 
-const NAV: { href: string; label: string; icon: IconName; stock?: boolean }[] = [
-  { href: '/dashboard', label: s.nav.dashboard, icon: 'stats-chart-outline' },
-  { href: '/stock', label: s.nav.stock, icon: 'cube-outline', stock: true },
-  { href: '/menu', label: s.nav.menu, icon: 'restaurant-outline' },
+const NAV: { href: string; label: (s: Strings) => string; icon: IconName; stock?: boolean }[] = [
+  { href: '/dashboard', label: (s) => s.nav.dashboard, icon: 'stats-chart-outline' },
+  { href: '/stock', label: (s) => s.nav.stock, icon: 'cube-outline', stock: true },
+  { href: '/menu', label: (s) => s.nav.menu, icon: 'restaurant-outline' },
 ];
 
 function NavList({ onNavigate, activeRef }: { onNavigate?: () => void; activeRef?: React.RefObject<HTMLAnchorElement | null> }) {
+  const s = useStrings();
   const pathname = usePathname();
   const { lowCount } = useStock();
   return (
@@ -45,7 +48,7 @@ function NavList({ onNavigate, activeRef }: { onNavigate?: () => void; activeRef
               )}
             >
               <Icon name={item.icon} className={cx('size-icon', active ? 'text-primary' : 'text-text-muted')} />
-              {item.label}
+              {item.label(s)}
               {item.stock && lowCount > 0 && (
                 <span className="ml-auto min-w-6 h-6 px-2 rounded-full bg-status-low-stock-bg text-status-low-stock-fg text-xs font-bold tabular-nums grid place-items-center">
                   {lowCount}
@@ -69,6 +72,7 @@ function SideContent({
   onNavigate?: () => void;
   activeRef?: React.RefObject<HTMLAnchorElement | null>;
 }) {
+  const s = useStrings();
   return (
     <>
       <Link href="/dashboard" onClick={onNavigate} className="px-2 flex items-center gap-3 rounded-md">
@@ -81,13 +85,19 @@ function SideContent({
       <nav aria-label={s.nav.main}>
         <NavList onNavigate={onNavigate} activeRef={activeRef} />
       </nav>
+      {/* Laptop sidebar only: below lg the switch sits in the top bar. */}
+      {!onNavigate && (
+        <div className="mt-auto pt-6 px-2">
+          <LangSwitch />
+        </div>
+      )}
       {user && (
-        <div className="mt-auto border-t border-border pt-4">
+        <div className={cx('border-t border-border pt-4', onNavigate ? 'mt-auto' : 'mt-4')}>
           <div className="px-2 flex items-center gap-3">
             <Avatar name={user.fullName} />
             <div className="min-w-0">
               <p className="text-sm font-semibold text-text truncate">{user.fullName || user.email}</p>
-              <p className="text-xs text-text-muted">{roleLabels[user.role]}</p>
+              <p className="text-xs text-text-muted">{s.roles[user.role]}</p>
             </div>
           </div>
           <SignOutButton variant="ghost" size="sm" fullWidth className="mt-3 justify-start" />
@@ -98,6 +108,7 @@ function SideContent({
 }
 
 export function AppFrame({ user, children }: { user: FrameUser; children: ReactNode }) {
+  const s = useStrings();
   const router = useRouter();
   const pathname = usePathname();
   const { lowCount } = useStock();
@@ -140,17 +151,20 @@ export function AppFrame({ user, children }: { user: FrameUser; children: ReactN
           <BrandMark />
           <span className="text-md font-bold">{s.brand.name}</span>
         </Link>
-        <button
-          ref={menuButton}
-          type="button"
-          onClick={() => setNavOpen(true)}
-          aria-expanded={navOpen}
-          aria-label={lowCount > 0 ? s.nav.openMenuLow(lowCount) : s.nav.openMenu}
-          className="relative -mr-2 size-12 rounded-full grid place-items-center text-text hover:bg-surface-muted"
-        >
-          <Icon name="menu-outline" className="size-icon-lg" />
-          {lowCount > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-danger" />}
-        </button>
+        <div className="flex items-center gap-2">
+          <LangSwitch />
+          <button
+            ref={menuButton}
+            type="button"
+            onClick={() => setNavOpen(true)}
+            aria-expanded={navOpen}
+            aria-label={lowCount > 0 ? s.nav.openMenuLow(lowCount) : s.nav.openMenu}
+            className="relative -mr-2 size-12 rounded-full grid place-items-center text-text hover:bg-surface-muted"
+          >
+            <Icon name="menu-outline" className="size-icon-lg" />
+            {lowCount > 0 && <span className="absolute top-2 right-2 size-2 rounded-full bg-danger" />}
+          </button>
+        </div>
       </header>
 
       <Drawer

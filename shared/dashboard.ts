@@ -1,5 +1,5 @@
 // Shape of `rpc('dashboard_today')` (generated types only say `Json`).
-// Keep in step with supabase/migrations/*_dashboard.sql and supabase/README.md.
+// Keep in step with the latest dashboard_today() migration (*_amharic_names.sql) and supabase/README.md.
 //
 //   const { data, error } = await supabase.rpc('dashboard_today');
 //   const today = data as unknown as DashboardToday;
@@ -31,7 +31,14 @@ export interface DashboardToday {
   /** Always 24 entries, hour 0..23 in Addis time, by paid_at. */
   sales_by_hour: { hour: number; sales_etb: number }[];
   /** Up to 5 items from orders sent today (any status), by quantity, then revenue, then name. */
-  top_items: { menu_item_id: number; name: string; quantity: number; revenue_etb: number }[];
+  top_items: {
+    menu_item_id: number;
+    name: string;
+    /** Amharic name; '' if none was entered. */
+    name_am: string;
+    quantity: number;
+    revenue_etb: number;
+  }[];
   /** Always 3 entries in PAYMENT_METHODS order (cash, telebirr, cbe_birr); zeros when unused. */
   payment_mix: { method: PaymentMethod; sales_etb: number; orders: number }[];
   /** Open orders, oldest first. */
@@ -52,6 +59,8 @@ export interface DashboardToday {
   low_stock: {
     id: number;
     name: string;
+    /** Amharic name; '' if none was entered. */
+    name_am: string;
     unit: IngredientUnit;
     quantity_on_hand: number;
     low_stock_threshold: number;

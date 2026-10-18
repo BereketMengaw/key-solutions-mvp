@@ -8,12 +8,12 @@ import { Icon, type IconName } from '@/components/icons';
 import { Spinner, cx } from '@/components/ui';
 import { isLow, isOut, levelPct, tickPct } from '@/lib/format';
 import type { Connection } from '@/lib/stock/StockProvider';
-import { s } from '@/lib/strings';
+import { useStrings } from '@/components/LangProvider';
 
 /* ---------------------------------------------------------------- LivePill */
 
 export function LivePill({ state }: { state: Connection }) {
-  const c = s.stock.connection;
+  const c = useStrings().stock.connection;
   const look = {
     connecting: { cls: 'bg-surface-muted text-text-muted', label: c.connecting },
     live: { cls: 'bg-success-soft text-success', label: c.live },
@@ -134,6 +134,7 @@ export function LevelBar({ quantity, threshold }: { quantity: number; threshold:
 /* ---------------------------------------------------------------- StatusChip */
 
 export function StatusChip({ quantity, threshold }: { quantity: number; threshold: number }) {
+  const s = useStrings();
   if (isOut(quantity) && threshold > 0) {
     return (
       <span className="inline-flex items-center gap-1 py-1 px-3 rounded-full text-sm font-semibold bg-danger text-text-on-overdue">
@@ -168,6 +169,7 @@ export function LowFilter({
   lowCount: number;
   className?: string;
 }) {
+  const s = useStrings();
   const opt = (active: boolean) =>
     cx(
       'h-10 px-4 rounded-md text-sm font-semibold flex items-center justify-center gap-2 transition-colors motion-reduce:transition-none',
@@ -203,6 +205,7 @@ export function SearchField({
   onChange: (v: string) => void;
   className?: string;
 }) {
+  const s = useStrings();
   const ref = useRef<HTMLInputElement>(null);
   return (
     <div className={cx('relative', className)}>
@@ -243,6 +246,7 @@ export function SearchField({
 export type ToastMsg = { id: number; title: string; body: string };
 
 export function Toast({ toast, onDismiss }: { toast: ToastMsg | null; onDismiss: () => void }) {
+  const s = useStrings();
   const [shown, setShown] = useState(false);
   const paused = useRef(false);
   const remaining = useRef<number>(timing.toastMs);

@@ -1,8 +1,9 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
+import { Text } from '@/components/Text';
 import { MAX_QUANTITY } from '@/lib/draft';
-import { strings } from '@/strings';
+import { useT } from '@/lib/i18n';
 import { colors, radius, size, spacing, tabularNums, text, touch } from '@/theme';
 
 type Props = {
@@ -15,6 +16,7 @@ type Props = {
 };
 
 export function QuantityStepper({ item, quantity, onIncrement, onDecrement, disabled, spread }: Props) {
+  const strings = useT();
   const atOne = quantity <= 1;
   const atMax = quantity >= MAX_QUANTITY;
   const plusDisabled = disabled || atMax;

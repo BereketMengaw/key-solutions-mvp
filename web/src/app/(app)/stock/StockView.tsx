@@ -3,25 +3,29 @@
 import { useMemo, useRef, useState } from 'react';
 import { Icon } from '@/components/icons';
 import { Banner, Button, EmptyState, LoadingRegion, Skeleton, cx } from '@/components/ui';
+import { useLang, useStrings } from '@/components/LangProvider';
 import { formatDelta, formatQuantity, formatTime, isLow } from '@/lib/format';
+import { nameIn, type Lang } from '@/lib/i18n';
 import { useStock, type Ingredient, type MovementEntry, type RowChange } from '@/lib/stock/StockProvider';
-import { s } from '@/lib/strings';
+import type { Strings } from '@/lib/strings';
 import { PageHeader } from '../PageHeader';
 import { AddStockDrawer, type AddStockResult } from './AddStockDrawer';
 import { LevelBar, LivePill, LowFilter, SearchField, StatTile, StatusChip, Toast, type ToastMsg } from './parts';
 
-function lowCaption(names: string[]): string {
+function lowCaption(names: string[], s: Strings): string {
   if (names.length === 0) return s.stock.tiles.lowNone;
   if (names.length === 1) return names[0];
   if (names.length === 2) return s.stock.tiles.two(names[0], names[1]);
   return s.stock.tiles.more(names[0], names[1], names.length - 2);
 }
 
-function entryTitle(e: MovementEntry): string {
-  return e.kind === 'order' ? s.stock.panel.order(e.orderId, e.table) : s.stock.panel.delivery(e.ingredient);
+function entryTitle(e: MovementEntry, s: Strings, lang: Lang): string {
+  return e.kind === 'order' ? s.stock.panel.order(e.orderId, e.table) : s.stock.panel.delivery(nameIn(lang, e.ingredient));
 }
 
 export function StockView({ initialQuery, initialLowOnly }: { initialQuery: string; initialLowOnly: boolean }) {
+  const s = useStrings();
+  const lang = useLang();
   const stock = useStock();
   const { ingredients, ingredientsState, changes, connection, connectionBanner } = stock;
 
@@ -51,14 +55,15 @@ export function StockView({ initialQuery, initialLowOnly }: { initialQuery: stri
   };
 
   const lowNames = useMemo(
-    () => ingredients.filter((i) => isLow(i.quantity_on_hand, i.low_stock_threshold)).map((i) => i.name),
-    [ingredients],
+    () => ingredients.filter((i) => isLow(i.quantity_on_hand, i.low_stock_threshold)).map((i) => nameIn(lang, i)),
+    [ingredients, lang],
   );
 
+  // Search matches the English and the Amharic name, whichever language is showing.
   const needle = query.trim().toLocaleLowerCase('en');
   const visible = ingredients.filter(
     (i) =>
-      (!needle || i.name.toLocaleLowerCase('en').includes(needle)) &&
+      (!needle || i.name.toLocaleLowerCase('en').includes(needle) || i.name_am.includes(needle)) &&
       (!lowOnly || isLow(i.quantity_on_hand, i.low_stock_threshold) || pinned.has(i.id)),
   );
   // Remember what the Low filter is showing, so a row that recovers doesn't vanish under the cursor.
@@ -97,10 +102,10 @@ export function StockView({ initialQuery, initialLowOnly }: { initialQuery: stri
       !isLow(newQuantity, ingredient.low_stock_threshold);
     setToast({
       id: Date.now(),
-      title: s.drawer.toastTitle(formatQuantity(added, ingredient.unit), ingredient.name),
+      title: s.drawer.toastTitle(formatQuantity(added, ingredient.unit, lang), nameIn(lang, ingredient)),
       body: crossed
-        ? s.drawer.toastBack(ingredient.name)
-        : s.drawer.toastNow(ingredient.name, formatQuantity(newQuantity, ingredient.unit)),
+        ? s.drawer.toastBack(nameIn(lang, ingredient))
+        : s.drawer.toastNow(nameIn(lang, ingredient), formatQuantity(newQuantity, ingredient.unit, lang)),
     });
   };
 
@@ -205,7 +210,7 @@ export function StockView({ initialQuery, initialLowOnly }: { initialQuery: stri
                 icon="warning-outline"
                 label={s.stock.tiles.low}
                 value={lowNames.length}
-                caption={lowCaption(lowNames)}
+                caption={lowCaption(lowNames, s)}
                 alert={lowNames.length > 0}
                 flash={stock.lowTileFlash}
                 valueClass="text-2xl md:text-3xl"
@@ -329,8 +334,10 @@ export function StockView({ initialQuery, initialLowOnly }: { initialQuery: stri
 /* ---------------------------------------------------------------- tiles */
 
 function LastChangeTile({ entry }: { entry: MovementEntry | undefined }) {
-  const value = entry ? formatTime(entry.at) : s.stock.tiles.dash;
-  const caption = entry ? entryTitle(entry) : s.stock.tiles.lastNone;
+  const s = useStrings();
+  const lang = useLang();
+  const value = entry ? formatTime(entry.at, lang) : s.stock.tiles.dash;
+  const caption = entry ? entryTitle(entry, s, lang) : s.stock.tiles.lastNone;
   const long = value.length > 5;
   return (
     <>
@@ -356,6 +363,7 @@ type RowProps = {
 };
 
 function DeltaSlot({ change, unit }: { change: RowChange | undefined; unit: string }) {
+  const lang = useLang();
   const up = (change?.delta ?? 0) > 0;
   return (
     <span
@@ -366,7 +374,7 @@ function DeltaSlot({ change, unit }: { change: RowChange | undefined; unit: stri
         up ? 'text-success font-semibold' : 'text-text-muted',
       )}
     >
-      {change ? formatDelta(change.delta, unit) : ' '}
+      {change ? formatDelta(change.delta, unit, lang) : ' '}
     </span>
   );
 }
@@ -381,6 +389,8 @@ function FlagEdge() {
 }
 
 function IngredientTable({ rows, changes, onAdd }: RowProps) {
+  const s = useStrings();
+  const lang = useLang();
   const th = 'px-4 py-3 text-left text-sm font-semibold text-text-muted bg-surface border-b border-border';
   return (
     <table className="hidden md:table w-full">
@@ -412,12 +422,12 @@ function IngredientTable({ rows, changes, onAdd }: RowProps) {
             <tr key={i.id} data-ingredient={i.name} className={cx(n > 0 && 'border-t border-border', flashClass(change))}>
               <td className="relative px-4 py-3 align-middle">
                 {low && <FlagEdge />}
-                <p className="text-md font-semibold text-text">{i.name}</p>
-                <p className="text-sm text-text-subtle">{s.stock.table.lowBelow(formatQuantity(i.low_stock_threshold, i.unit))}</p>
+                <p className="text-md font-semibold text-text">{nameIn(lang, i)}</p>
+                <p className="text-sm text-text-subtle">{s.stock.table.lowBelow(formatQuantity(i.low_stock_threshold, i.unit, lang))}</p>
               </td>
               <td className="px-4 py-3 align-middle text-right whitespace-nowrap min-w-stock-qty-col">
                 <p className={cx('text-lg font-semibold tabular-nums', low ? 'text-danger' : 'text-text')} data-qty>
-                  {formatQuantity(i.quantity_on_hand, i.unit)}
+                  {formatQuantity(i.quantity_on_hand, i.unit, lang)}
                 </p>
                 <DeltaSlot change={change} unit={i.unit} />
               </td>
@@ -432,7 +442,7 @@ function IngredientTable({ rows, changes, onAdd }: RowProps) {
                   variant="secondary"
                   size="sm"
                   icon="add"
-                  aria-label={s.stock.addTo(i.name)}
+                  aria-label={s.stock.addTo(nameIn(lang, i))}
                   onClick={(e) => onAdd(i.id, e.currentTarget)}
                 >
                   {s.stock.add}
@@ -447,6 +457,8 @@ function IngredientTable({ rows, changes, onAdd }: RowProps) {
 }
 
 function IngredientList({ rows, changes, onAdd }: RowProps) {
+  const s = useStrings();
+  const lang = useLang();
   return (
     <ul className="md:hidden divide-y divide-border">
       {rows.map((i) => {
@@ -456,12 +468,12 @@ function IngredientList({ rows, changes, onAdd }: RowProps) {
           <li key={i.id} data-ingredient={i.name} className={cx('relative px-4 py-4', flashClass(change))}>
             {low && <FlagEdge />}
             <div className="flex items-start justify-between gap-3">
-              <p className="text-md font-semibold">{i.name}</p>
+              <p className="text-md font-semibold">{nameIn(lang, i)}</p>
               <StatusChip quantity={i.quantity_on_hand} threshold={i.low_stock_threshold} />
             </div>
             <div className="mt-1 flex items-baseline gap-2">
               <span className={cx('text-xl font-bold tabular-nums', low ? 'text-danger' : 'text-text')}>
-                {formatQuantity(i.quantity_on_hand, i.unit)}
+                {formatQuantity(i.quantity_on_hand, i.unit, lang)}
               </span>
               <DeltaSlot change={change} unit={i.unit} />
             </div>
@@ -469,12 +481,12 @@ function IngredientList({ rows, changes, onAdd }: RowProps) {
               <LevelBar quantity={i.quantity_on_hand} threshold={i.low_stock_threshold} />
             </div>
             <div className="mt-2 flex items-center justify-between">
-              <span className="text-sm text-text-subtle">{s.stock.table.lowBelow(formatQuantity(i.low_stock_threshold, i.unit))}</span>
+              <span className="text-sm text-text-subtle">{s.stock.table.lowBelow(formatQuantity(i.low_stock_threshold, i.unit, lang))}</span>
               <Button
                 variant="secondary"
                 size="sm"
                 icon="add"
-                aria-label={s.stock.addTo(i.name)}
+                aria-label={s.stock.addTo(nameIn(lang, i))}
                 onClick={(e) => onAdd(i.id, e.currentTarget)}
               >
                 {s.stock.add}
@@ -506,6 +518,8 @@ function TableSkeleton() {
 /* ---------------------------------------------------------------- Orders and deliveries */
 
 function MovementsPanel() {
+  const s = useStrings();
+  const lang = useLang();
   const { movements, movementsState, freshEntries, retryMovements } = useStock();
   return (
     <section
@@ -572,9 +586,9 @@ function MovementsPanel() {
               </span>
               <div className="min-w-0 flex-1">
                 <div className="flex items-baseline gap-2">
-                  <p className="text-sm font-semibold text-text">{entryTitle(e)}</p>
+                  <p className="text-sm font-semibold text-text">{entryTitle(e, s, lang)}</p>
                   <time dateTime={e.at} className="ml-auto text-xs text-text-subtle tabular-nums whitespace-nowrap">
-                    {formatTime(e.at)}
+                    {formatTime(e.at, lang)}
                   </time>
                 </div>
                 {e.kind === 'order' ? (
@@ -583,7 +597,7 @@ function MovementsPanel() {
                       <span key={l.name}>
                         {n > 0 && ' · '}
                         <span className="whitespace-nowrap">
-                          {l.name} {formatDelta(l.change, l.unit)}
+                          {nameIn(lang, l)} {formatDelta(l.change, l.unit, lang)}
                         </span>
                       </span>
                     ))}
@@ -591,7 +605,7 @@ function MovementsPanel() {
                 ) : (
                   <>
                     <p className="mt-1 text-sm">
-                      <span className="font-semibold text-success">{formatDelta(e.change, e.unit)}</span>
+                      <span className="font-semibold text-success">{formatDelta(e.change, e.unit, lang)}</span>
                       {e.by && <span className="text-text-muted"> · {s.stock.panel.by(e.by)}</span>}
                     </p>
                     {e.note && <p className="mt-1 text-sm text-text line-clamp-2">“{e.note}”</p>}

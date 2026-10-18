@@ -1,11 +1,14 @@
 import type { Metadata } from 'next';
 import { EmptyState } from '@/components/ui';
-import { s } from '@/lib/strings';
+import { getStrings } from '@/lib/lang-server';
 import { PageHeader } from '../PageHeader';
 
-export const metadata: Metadata = { title: s.titles.menu };
+export async function generateMetadata(): Promise<Metadata> {
+  return { title: (await getStrings()).titles.menu };
+}
 
-export default function MenuPage() {
+export default async function MenuPage() {
+  const s = await getStrings();
   return (
     <>
       <PageHeader title={s.placeholders.menuTitle} subtitle={s.placeholders.menuSubtitle} />

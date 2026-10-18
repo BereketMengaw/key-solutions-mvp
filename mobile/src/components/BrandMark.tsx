@@ -1,10 +1,12 @@
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
-import { strings } from '@/strings';
+import { Text } from '@/components/Text';
+import { useT } from '@/lib/i18n';
 import { colors, radius, shadow, size, spacing, text } from '@/theme';
 
 /** The "K" key mark. Views and Text only, no image asset. */
 export function BrandMark() {
+  const strings = useT();
   return (
     <View accessible accessibilityLabel={strings.common.appName} style={styles.mark}>
       <Text style={[text('3xl', 'bold'), { color: colors.textOnPrimary }]}>K</Text>

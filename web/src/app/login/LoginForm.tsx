@@ -6,11 +6,22 @@ import { Icon } from '@/components/icons';
 import { Banner, Button, FieldError, cx, fieldBox } from '@/components/ui';
 import { isWebRole } from '@/lib/roles';
 import { safeNext } from '@/lib/safe-next';
-import { s } from '@/lib/strings';
+import { useStrings } from '@/components/LangProvider';
+import type { Strings } from '@/lib/strings';
 import { getSupabase } from '@/lib/supabase/client';
 
-type FormBanner = { tone: 'error' | 'info'; title: string; body: string } | null;
-type Errors = { email?: string; password?: string };
+// Banner and field errors are kept as keys, so switching language re-words them in place.
+type BannerKind = 'expired' | 'tooMany' | 'badCredentials' | 'network';
+type ErrorKey = 'emailEmpty' | 'emailInvalid' | 'passwordEmpty';
+type Errors = { email?: ErrorKey; password?: ErrorKey };
+
+function bannerFor(kind: BannerKind, s: Strings) {
+  const l = s.login;
+  if (kind === 'expired') return { tone: 'info' as const, title: l.expiredTitle, body: l.expiredBody };
+  if (kind === 'tooMany') return { tone: 'error' as const, title: l.tooManyTitle, body: l.tooManyBody };
+  if (kind === 'badCredentials') return { tone: 'error' as const, title: l.badCredentialsTitle, body: l.badCredentialsBody };
+  return { tone: 'error' as const, title: l.networkTitle, body: l.networkBody };
+}
 
 const TIMEOUT_MS = 15_000;
 
@@ -23,13 +34,13 @@ function withTimeout<T>(p: Promise<T>): Promise<T> {
 
 export function LoginForm({ next, expired }: { next: string | null; expired: boolean }) {
   const router = useRouter();
+  const s = useStrings();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [errors, setErrors] = useState<Errors>({});
-  const [banner, setBanner] = useState<FormBanner>(
-    expired ? { tone: 'info', title: s.login.expiredTitle, body: s.login.expiredBody } : null,
-  );
+  const [bannerKind, setBanner] = useState<BannerKind | null>(expired ? 'expired' : null);
+  const banner = bannerKind ? bannerFor(bannerKind, s) : null;
   const [busy, setBusy] = useState(false);
   const emailRef = useRef<HTMLInputElement>(null);
   const passwordRef = useRef<HTMLInputElement>(null);
@@ -46,9 +57,9 @@ export function LoginForm({ next, expired }: { next: string | null; expired: boo
     if (busy) return;
     const trimmed = email.trim();
     const found: Errors = {};
-    if (!trimmed) found.email = s.login.emailEmpty;
-    else if (!trimmed.includes('@')) found.email = s.login.emailInvalid;
-    if (!password) found.password = s.login.passwordEmpty;
+    if (!trimmed) found.email = 'emailEmpty';
+    else if (!trimmed.includes('@')) found.email = 'emailInvalid';
+    if (!password) found.password = 'passwordEmpty';
     setErrors(found);
     if (found.email || found.password) {
       (found.email ? emailRef : passwordRef).current?.focus();
@@ -65,13 +76,13 @@ export function LoginForm({ next, expired }: { next: string | null; expired: boo
       if (error) {
         setBusy(false);
         if (error.status === 429) {
-          setBanner({ tone: 'error', title: s.login.tooManyTitle, body: s.login.tooManyBody });
+          setBanner('tooMany');
         } else if (error.status === 400 || error.code === 'invalid_credentials') {
-          setBanner({ tone: 'error', title: s.login.badCredentialsTitle, body: s.login.badCredentialsBody });
+          setBanner('badCredentials');
           setPassword('');
           passwordRef.current?.focus();
         } else {
-          setBanner({ tone: 'error', title: s.login.networkTitle, body: s.login.networkBody });
+          setBanner('network');
         }
         return;
       }
@@ -85,7 +96,7 @@ export function LoginForm({ next, expired }: { next: string | null; expired: boo
       router.refresh();
     } catch {
       setBusy(false);
-      setBanner({ tone: 'error', title: s.login.networkTitle, body: s.login.networkBody });
+      setBanner('network');
     }
   }
 
@@ -124,7 +135,7 @@ export function LoginForm({ next, expired }: { next: string | null; expired: boo
           aria-describedby={errors.email ? emailErrId : undefined}
           className={fieldBox(!!errors.email)}
         />
-        {errors.email && <FieldError id={emailErrId} message={errors.email} />}
+        {errors.email && <FieldError id={emailErrId} message={s.login[errors.email]} />}
 
         <label htmlFor="password" className="mt-4 block text-sm font-semibold text-text mb-2">
           {s.login.password}
@@ -157,7 +168,7 @@ export function LoginForm({ next, expired }: { next: string | null; expired: boo
             <Icon name={showPassword ? 'eye-off-outline' : 'eye-outline'} className="size-icon" />
           </button>
         </div>
-        {errors.password && <FieldError id={pwErrId} message={errors.password} />}
+        {errors.password && <FieldError id={pwErrId} message={s.login[errors.password]} />}
 
         <Button
           type="submit"

@@ -48,7 +48,7 @@ folder, it says so in its report and the PM routes it. `code-quality` edits noth
 
 - **Backend:** Supabase (Postgres, Auth, Realtime, RLS). Free tier only.
 - **Mobile:** Expo (React Native) + TypeScript, Expo Router, `@supabase/supabase-js`. Ships as an Android APK via EAS free tier.
-- **Web:** Next.js (App Router) + TypeScript + Tailwind CSS, `@supabase/ssr`. Hosted on Netlify or Cloudflare Pages — never a `*.vercel.app` link.
+- **Web:** Next.js (App Router) + TypeScript + Tailwind CSS, `@supabase/ssr`. Hosted on Vercel (key-solutions-mvp.vercel.app), project root `web/`.
 - **Package manager:** npm. Each app has its own `package.json`; no monorepo tooling.
 - TypeScript `strict` everywhere. No `any` unless commented why.
 

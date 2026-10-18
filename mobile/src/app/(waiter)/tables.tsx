@@ -1,9 +1,10 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { OrderStatus } from '@shared/constants';
 import type { Tables as Row } from '@shared/database.types';
+import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { Banner, Bone, EmptyState, Skeleton } from '@/components/Feedback';
 import { TableCard } from '@/components/TableCard';
@@ -14,17 +15,17 @@ import { useDraft } from '@/lib/draft';
 import { useLive, useLiveRefetch } from '@/lib/live';
 import { PAID, READY } from '@/lib/names';
 import { supabase } from '@/lib/supabase';
-import { strings } from '@/strings';
+import { useT } from '@/lib/i18n';
+import type { Strings } from '@/strings';
 import { colors, radius, size, spacing, text } from '@/theme';
 
-const s = strings.tables;
 const SKELETON_COUNT = 8;
 
 type DiningTable = Row<'dining_tables'>;
 type OpenInfo = { status: OrderStatus; count: number; latestAt: string; ready: boolean };
 type Data = { tables: DiningTable[]; open: Record<number, OpenInfo> };
 
-function greeting(now = new Date()): string {
+function greeting(s: Strings['tables'], now = new Date()): string {
   const h = now.getHours();
   return h < 12 ? s.greetingMorning : h < 17 ? s.greetingAfternoon : s.greetingEvening;
 }
@@ -54,6 +55,8 @@ async function fetchTables(): Promise<Data> {
 }
 
 export default function TablesScreen() {
+  const strings = useT();
+  const s = strings.tables;
   const { profile, signOut } = useAuth();
   const { clear } = useDraft();
   const live = useLive();
@@ -100,6 +103,7 @@ export default function TablesScreen() {
       title: s.signOutTitle,
       message: s.signOutMessage,
       confirmLabel: strings.common.signOut,
+      cancelLabel: strings.common.cancel,
       onConfirm: async () => {
         setSigningOut(true);
         clear();
@@ -151,7 +155,7 @@ export default function TablesScreen() {
   return (
     <View style={styles.screen}>
       <TopBarHome
-        eyebrow={greeting()}
+        eyebrow={greeting(s)}
         title={name}
         right={
           <Button

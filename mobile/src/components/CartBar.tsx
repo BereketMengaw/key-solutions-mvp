@@ -1,16 +1,17 @@
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState } from 'react';
-import { Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
-import { formatEtb } from '@/lib/format';
-import { strings } from '@/strings';
+import { Text } from '@/components/Text';
+import { useT } from '@/lib/i18n';
 import { colors, radius, shadow, size, spacing, tabularNums, text, touch } from '@/theme';
 
 type Props = { count: number; total: number; onPress: () => void };
 
 /** Floating "Review order" bar. Slides in with the first item, out when the order is emptied. */
 export function CartBar({ count, total, onPress }: Props) {
+  const strings = useT();
   const insets = useSafeAreaInsets();
   const visible = count > 0;
   const [rendered, setRendered] = useState(visible);
@@ -33,7 +34,7 @@ export function CartBar({ count, total, onPress }: Props) {
   if (!rendered) return null;
 
   const countLabel = strings.common.itemCount(count);
-  const totalLabel = formatEtb(total);
+  const totalLabel = strings.common.money(total);
 
   return (
     <Animated.View

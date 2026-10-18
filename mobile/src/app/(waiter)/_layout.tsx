@@ -6,7 +6,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import type { IconName } from '@/components/Button';
 import { LiveOrdersProvider, useLive } from '@/lib/live';
 import { useOrientationLock } from '@/lib/orientation';
-import { strings } from '@/strings';
+import { useLocalFont, useT } from '@/lib/i18n';
 import { colors, radius, shadow, size, spacing, text, touch } from '@/theme';
 
 function TabIcon({ focused, icon, activeIcon }: { focused: boolean; icon: IconName; activeIcon: IconName }) {
@@ -31,6 +31,8 @@ export default function WaiterHome() {
 }
 
 function WaiterTabs() {
+  const strings = useT();
+  const localFont = useLocalFont();
   const insets = useSafeAreaInsets();
   const { readyCount } = useLive();
   return (
@@ -48,7 +50,7 @@ function WaiterTabs() {
           ...shadow('none'),
         },
         tabBarItemStyle: { paddingVertical: spacing[2], gap: spacing[1] },
-        tabBarLabelStyle: text('xs', 'semibold'),
+        tabBarLabelStyle: localFont(text('xs', 'semibold')),
         sceneStyle: { backgroundColor: colors.background },
       }}
     >

@@ -1,17 +1,18 @@
 import { Ionicons } from '@expo/vector-icons';
-import { StyleSheet, Text, View } from 'react-native';
+import { StyleSheet, View } from 'react-native';
 
 import type { OrderStatus, PaymentMethod } from '@shared/constants';
-import { formatEtb, formatTime } from '@/lib/format';
+import { Text } from '@/components/Text';
+import { formatTime } from '@/lib/format';
 import { PAID, READY, SERVED } from '@/lib/names';
-import { strings } from '@/strings';
+import { useLocalName, useT } from '@/lib/i18n';
 import { colors, radius, shadow, size, spacing, statusColors, tabularNums, text } from '@/theme';
 import { Button } from './Button';
 import { Banner } from './Feedback';
 import { HighlightRing, useHighlightFade } from './HighlightRing';
 import { StatusBadge } from './StatusBadge';
 
-export type OrderCardLine = { id: number; quantity: number; note: string; unitPriceEtb: number; name: string };
+export type OrderCardLine = { id: number; quantity: number; note: string; unitPriceEtb: number; name: string; nameAm: string };
 
 type Props = {
   id: number;
@@ -30,7 +31,6 @@ type Props = {
 };
 
 const MAX_LINES = 4;
-const m = strings.myOrders;
 
 export function orderTotal(lines: OrderCardLine[]): number {
   return lines.reduce((s, l) => s + l.quantity * l.unitPriceEtb, 0);
@@ -43,6 +43,9 @@ function Ring({ onDone }: { onDone: () => void }) {
 
 export function OrderCard(props: Props) {
   const { id, tableNumber, status, createdAt, lines, paymentMethod, onAction, actionBusy, actionError } = props;
+  const strings = useT();
+  const localName = useLocalName();
+  const m = strings.myOrders;
   const shown = lines.length > MAX_LINES ? lines.slice(0, MAX_LINES - 1) : lines;
   const hidden = lines.length - shown.length;
   const isReady = status === READY;
@@ -72,11 +75,11 @@ export function OrderCard(props: Props) {
           {shown.map((l) => (
             <View key={l.id} style={styles.lineRow}>
               <View style={styles.flex}>
-                <Text style={[text('md'), { color: colors.text }]}>{strings.common.qtyLine(l.quantity, l.name)}</Text>
+                <Text style={[text('md'), { color: colors.text }]}>{strings.common.qtyLine(l.quantity, localName(l.name, l.nameAm))}</Text>
                 {l.note ? <Text style={[text('sm'), { color: colors.textMuted }]}>{m.note(l.note)}</Text> : null}
               </View>
               <Text style={[text('md'), tabularNums, { color: colors.textMuted }]}>
-                {formatEtb(l.quantity * l.unitPriceEtb)}
+                {strings.common.money(l.quantity * l.unitPriceEtb)}
               </Text>
             </View>
           ))}
@@ -84,7 +87,7 @@ export function OrderCard(props: Props) {
         </View>
         <View style={[styles.row, styles.footer]}>
           <Text style={[text('md'), { color: colors.textMuted }]}>{strings.common.total}</Text>
-          <Text style={[text('lg', 'bold'), tabularNums, { color: colors.text }]}>{formatEtb(orderTotal(lines))}</Text>
+          <Text style={[text('lg', 'bold'), tabularNums, { color: colors.text }]}>{strings.common.money(orderTotal(lines))}</Text>
         </View>
         {isPaid && paymentMethod ? (
           <Text style={[text('sm', 'semibold'), styles.paidLine]}>

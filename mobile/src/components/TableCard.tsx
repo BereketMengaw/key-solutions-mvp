@@ -1,9 +1,10 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
 import type { OrderStatus } from '@shared/constants';
+import { Text } from '@/components/Text';
 import { READY } from '@/lib/names';
-import { strings } from '@/strings';
+import { useT } from '@/lib/i18n';
 import { colors, radius, shadow, size, spacing, tabularNums, text } from '@/theme';
 import { StatusBadge } from './StatusBadge';
 
@@ -19,6 +20,7 @@ type Props = {
 };
 
 export function TableCard({ number, seats, openStatus, openCount, ready, onPress }: Props) {
+  const strings = useT();
   const open = openStatus !== null;
   const badge = ready ? READY : openStatus;
   return (

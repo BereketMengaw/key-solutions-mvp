@@ -1,22 +1,21 @@
 import { router, useFocusEffect } from 'expo-router';
 import { useCallback, useRef, useState } from 'react';
-import { FlatList, LayoutAnimation, RefreshControl, StyleSheet, Text, View } from 'react-native';
+import { FlatList, LayoutAnimation, RefreshControl, StyleSheet, View } from 'react-native';
 
 import type { OrderStatus, PaymentMethod } from '@shared/constants';
+import { Text } from '@/components/Text';
 import { Banner, Bone, EmptyState, Skeleton } from '@/components/Feedback';
 import { OrderCard, orderTotal, type OrderCardLine } from '@/components/OrderCard';
 import { PaymentSheet } from '@/components/PaymentSheet';
 import { TopBarHome } from '@/components/TopBar';
 import { useAuth } from '@/lib/auth';
-import { formatEtb, startOfTodayIso } from '@/lib/format';
+import { startOfTodayIso } from '@/lib/format';
 import { useLive, useLiveRefetch } from '@/lib/live';
 import { PAID, READY, SERVED } from '@/lib/names';
 import { advanceOrder } from '@/lib/orders';
 import { supabase } from '@/lib/supabase';
-import { strings } from '@/strings';
+import { useT } from '@/lib/i18n';
 import { colors, radius, spacing, tabularNums, text } from '@/theme';
-
-const s = strings.myOrders;
 
 type Order = {
   id: number;
@@ -42,7 +41,7 @@ async function fetchMyOrders(userId: string): Promise<Order[]> {
   const { data, error } = await supabase
     .from('orders')
     .select(
-      'id, status, payment_method, created_at, dining_tables(number), order_items(id, quantity, note, unit_price_etb, menu_items(name))',
+      'id, status, payment_method, created_at, dining_tables(number), order_items(id, quantity, note, unit_price_etb, menu_items(name, name_am))',
     )
     .eq('waiter_id', userId)
     .gte('created_at', startOfTodayIso())
@@ -61,12 +60,15 @@ async function fetchMyOrders(userId: string): Promise<Order[]> {
       note: l.note,
       unitPriceEtb: l.unit_price_etb,
       name: l.menu_items.name,
+      nameAm: l.menu_items.name_am,
     })),
   }));
   return sortOrders(orders);
 }
 
 export default function MyOrdersScreen() {
+  const strings = useT();
+  const s = strings.myOrders;
   const { session } = useAuth();
   const userId = session?.user.id;
   const [orders, setOrders] = useState<Order[] | null>(null);
@@ -257,7 +259,7 @@ export default function MyOrdersScreen() {
         )}
       />
       <PaymentSheet
-        order={paying ? { id: paying.id, tableNumber: paying.tableNumber, total: formatEtb(orderTotal(paying.lines)) } : null}
+        order={paying ? { id: paying.id, tableNumber: paying.tableNumber, total: strings.common.money(orderTotal(paying.lines)) } : null}
         saving={paySaving}
         failed={payFailed}
         onConfirm={confirmPaid}

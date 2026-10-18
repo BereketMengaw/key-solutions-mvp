@@ -1,9 +1,10 @@
 // Banner, EmptyState and Skeleton: inline messages, empty/error blocks and loading shapes.
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState, type ReactNode } from 'react';
-import { Animated, Platform, StyleSheet, Text, View, type StyleProp, type ViewStyle } from 'react-native';
+import { Animated, Platform, StyleSheet, View, type StyleProp, type ViewStyle } from 'react-native';
 
-import { strings } from '@/strings';
+import { Text } from '@/components/Text';
+import { useT } from '@/lib/i18n';
 import { colors, lineHeight, radius, size, spacing, text } from '@/theme';
 import { Button, type IconName } from './Button';
 
@@ -80,6 +81,7 @@ export function EmptyState({ icon, title, body, actionLabel, onAction, error }: 
 
 /** Pulsing placeholder container. Children are plain `Bone`s shaped like the real content. */
 export function Skeleton({ children, style }: { children: ReactNode; style?: ViewStyle }) {
+  const strings = useT();
   const [opacity] = useState(() => new Animated.Value(1));
   useEffect(() => {
     const useNativeDriver = Platform.OS !== 'web';

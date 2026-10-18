@@ -6,6 +6,12 @@ import {
   NotoSans_600SemiBold,
   NotoSans_700Bold,
 } from '@expo-google-fonts/noto-sans';
+import {
+  NotoSansEthiopic_400Regular,
+  NotoSansEthiopic_500Medium,
+  NotoSansEthiopic_600SemiBold,
+  NotoSansEthiopic_700Bold,
+} from '@expo-google-fonts/noto-sans-ethiopic';
 
 import { fontSize, fontWeight, lineHeight, shadows } from '@design/tokens';
 
@@ -20,6 +26,10 @@ export const fontFiles = {
   NotoSans_500Medium,
   NotoSans_600SemiBold,
   NotoSans_700Bold,
+  NotoSansEthiopic_400Regular,
+  NotoSansEthiopic_500Medium,
+  NotoSansEthiopic_600SemiBold,
+  NotoSansEthiopic_700Bold,
 };
 
 const familyByWeight: Record<Weight, keyof typeof fontFiles> = {
@@ -27,6 +37,14 @@ const familyByWeight: Record<Weight, keyof typeof fontFiles> = {
   medium: 'NotoSans_500Medium',
   semibold: 'NotoSans_600SemiBold',
   bold: 'NotoSans_700Bold',
+};
+
+/** Amharic mode swaps each Noto Sans file for the Noto Sans Ethiopic file of the same weight. */
+export const ethiopicFamily: Record<string, keyof typeof fontFiles> = {
+  NotoSans_400Regular: 'NotoSansEthiopic_400Regular',
+  NotoSans_500Medium: 'NotoSansEthiopic_500Medium',
+  NotoSans_600SemiBold: 'NotoSansEthiopic_600SemiBold',
+  NotoSans_700Bold: 'NotoSansEthiopic_700Bold',
 };
 
 /** fontSize + matching lineHeight + the font file for the weight. */

@@ -12,7 +12,8 @@ import type { PaymentMethod } from '@shared/constants';
 import type { DashboardToday } from '@shared/dashboard';
 import { addisDateKey, formatEtbNumber } from '@/lib/format';
 import type { Connection } from '@/lib/stock/StockProvider';
-import { s } from '@/lib/strings';
+import { useStrings } from '@/components/LangProvider';
+import type { Strings } from '@/lib/strings';
 import { getSupabase } from '@/lib/supabase/client';
 
 export type LiveRow = DashboardToday['live_floor'][number];
@@ -85,6 +86,15 @@ function normalize(raw: DashboardToday): DashboardToday {
   };
 }
 
+/**
+ * Nothing at all to show yet: the dashboard shows the welcome card instead of the tiles.
+ * All three must be 0 — just after Addis midnight orders_today resets while yesterday's open
+ * orders and today's first payments can still be there.
+ */
+export function isQuietDay(d: Pick<DashboardToday, 'orders_today' | 'paid_orders' | 'open_orders'>): boolean {
+  return d.orders_today === 0 && d.paid_orders === 0 && d.open_orders === 0;
+}
+
 const avg = (d: DashboardToday) => (d.paid_orders > 0 ? Math.round(d.sales_etb / d.paid_orders) : 0);
 
 type Diff = {
@@ -95,7 +105,7 @@ type Diff = {
   tilesEnter: boolean;
 };
 
-function diff(old: DashboardToday, next: DashboardToday): Diff {
+function diff(old: DashboardToday, next: DashboardToday, s: Strings): Diff {
   const flashes: string[] = [];
   const entered: string[] = [];
   const announcements: string[] = [];
@@ -158,12 +168,18 @@ function diff(old: DashboardToday, next: DashboardToday): Diff {
     entered,
     leaving,
     announcements,
-    tilesEnter: old.orders_today === 0 && next.orders_today > 0,
+    tilesEnter: isQuietDay(old) && !isQuietDay(next),
   };
 }
 
 export function useDashboard(serverNow: number): DashboardLive {
   const supabase = getSupabase();
+  // Announcements are worded when they happen, in the language showing then.
+  const strings = useStrings();
+  const stringsRef = useRef(strings);
+  useEffect(() => {
+    stringsRef.current = strings;
+  });
 
   const dataRef = useRef<DashboardToday | null>(null);
   const [data, setData] = useState<DashboardToday | null>(null);
@@ -220,7 +236,7 @@ export function useDashboard(serverNow: number): DashboardLive {
         return;
       }
       setCountUp(!quiet);
-      const d = diff(old, next);
+      const d = diff(old, next, stringsRef.current);
 
       const pulse = (setter: typeof setFlashes, keys: string[], prefix: string) => {
         if (!keys.length) return;

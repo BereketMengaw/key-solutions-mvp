@@ -1,16 +1,15 @@
 // Bottom sheet for "Mark paid": pick Cash / Telebirr / CBE Birr. A label only, no money moves.
 import { Ionicons } from '@expo/vector-icons';
 import { useState } from 'react';
-import { Modal, Pressable, StyleSheet, Text, View } from 'react-native';
+import { Modal, Pressable, StyleSheet, View } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import { PAYMENT_METHODS, type PaymentMethod } from '@shared/constants';
-import { strings } from '@/strings';
+import { Text } from '@/components/Text';
+import { useT } from '@/lib/i18n';
 import { colors, radius, shadow, size, spacing, tabularNums, text } from '@/theme';
 import { Button, type IconName } from './Button';
 import { Banner } from './Feedback';
-
-const p = strings.payment;
 
 const methodIcons: Record<PaymentMethod, IconName> = {
   cash: 'cash-outline',
@@ -27,6 +26,8 @@ type Props = {
 };
 
 export function PaymentSheet({ order, saving, failed, onConfirm, onClose }: Props) {
+  const strings = useT();
+  const p = strings.payment;
   const insets = useSafeAreaInsets();
   const [method, setMethod] = useState<PaymentMethod | null>(null);
   const [shownFor, setShownFor] = useState<number | null>(null);

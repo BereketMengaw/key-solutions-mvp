@@ -5,7 +5,6 @@ import {
   Pressable,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type NativeScrollEvent,
   type NativeSyntheticEvent,
@@ -14,6 +13,7 @@ import {
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
 import type { Tables } from '@shared/database.types';
+import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { CART_BAR_SPACE, CartBar } from '@/components/CartBar';
 import { Bone, EmptyState, Skeleton } from '@/components/Feedback';
@@ -22,13 +22,11 @@ import { TopBarStack } from '@/components/TopBar';
 import { confirmDestructive } from '@/lib/confirm';
 import { useDraft, type DraftTable } from '@/lib/draft';
 import { supabase } from '@/lib/supabase';
-import { strings } from '@/strings';
+import { useLocalName, useT } from '@/lib/i18n';
 import { colors, lineHeight, radius, size, spacing, text, touch } from '@/theme';
 
-const s = strings.menu;
-
-type Item = Pick<Tables<'menu_items'>, 'id' | 'category_id' | 'name' | 'price_etb' | 'sort_order'>;
-type Category = Pick<Tables<'menu_categories'>, 'id' | 'name' | 'sort_order'>;
+type Item = Pick<Tables<'menu_items'>, 'id' | 'category_id' | 'name' | 'name_am' | 'price_etb' | 'sort_order'>;
+type Category = Pick<Tables<'menu_categories'>, 'id' | 'name' | 'name_am' | 'sort_order'>;
 type Section = Category & { items: Item[] };
 
 /** After a tab tap, ignore scroll-driven tab changes while the list animates there. */
@@ -36,10 +34,10 @@ const TAB_JUMP_LOCK_MS = 600;
 
 async function fetchMenu(): Promise<Section[]> {
   const [cats, items] = await Promise.all([
-    supabase.from('menu_categories').select('id, name, sort_order').order('sort_order'),
+    supabase.from('menu_categories').select('id, name, name_am, sort_order').order('sort_order'),
     supabase
       .from('menu_items')
-      .select('id, category_id, name, price_etb, sort_order')
+      .select('id, category_id, name, name_am, price_etb, sort_order')
       .eq('is_available', true)
       .order('category_id')
       .order('sort_order'),
@@ -58,6 +56,9 @@ function pairs<T>(list: T[]): T[][] {
 }
 
 export default function MenuScreen() {
+  const strings = useT();
+  const s = strings.menu;
+  const localName = useLocalName();
   const insets = useSafeAreaInsets();
   const navigation = useNavigation();
   const params = useLocalSearchParams<{ tableId: string; number?: string; seats?: string }>();
@@ -136,6 +137,7 @@ export default function MenuScreen() {
       title: s.clearTitle,
       message: s.clearMessage(tableNumber),
       confirmLabel: s.clear,
+      cancelLabel: strings.common.cancel,
       onConfirm: draft.clear,
     });
 
@@ -144,10 +146,11 @@ export default function MenuScreen() {
     draft.add(table, {
       menuItemId: item.id,
       name: item.name,
+      nameAm: item.name_am,
       priceEtb: item.price_etb,
       categorySortOrder,
     });
-    AccessibilityInfo.announceForAccessibility(s.a11yAdded(item.name));
+    AccessibilityInfo.announceForAccessibility(s.a11yAdded(localName(item.name, item.name_am)));
   };
 
   const showTab = (id: number) => {
@@ -239,7 +242,7 @@ export default function MenuScreen() {
                 <Text
                   style={[text('sm', 'semibold'), { color: selected ? colors.textOnPrimary : colors.textMuted }]}
                 >
-                  {n > 0 ? s.tabWithCount(sec.name, n) : sec.name}
+                  {n > 0 ? s.tabWithCount(localName(sec.name, sec.name_am), n) : localName(sec.name, sec.name_am)}
                 </Text>
               </Pressable>
             );
@@ -260,7 +263,7 @@ export default function MenuScreen() {
               style={{ paddingTop: index === 0 ? spacing[4] : spacing[5] }}
             >
               <View style={styles.sectionHeader}>
-                <Text style={[text('lg', 'bold'), { color: colors.text }]}>{sec.name}</Text>
+                <Text style={[text('lg', 'bold'), { color: colors.text }]}>{localName(sec.name, sec.name_am)}</Text>
                 <Text style={[text('sm'), { color: colors.textSubtle }]}>
                   {strings.common.itemCount(sec.items.length)}
                 </Text>
@@ -271,7 +274,7 @@ export default function MenuScreen() {
                     {row.map((item) => (
                       <MenuItemCard
                         key={item.id}
-                        name={item.name}
+                        name={localName(item.name, item.name_am)}
                         priceEtb={item.price_etb}
                         categorySortOrder={sec.sort_order}
                         quantity={qtyByItem.get(item.id) ?? 0}

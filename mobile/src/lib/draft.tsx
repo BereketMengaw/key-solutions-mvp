@@ -12,6 +12,7 @@ type MenuItem = Tables<'menu_items'>;
 export type DraftLine = {
   menuItemId: MenuItem['id'];
   name: MenuItem['name'];
+  nameAm: MenuItem['name_am'];
   priceEtb: MenuItem['price_etb'];
   categorySortOrder: Tables<'menu_categories'>['sort_order'];
   quantity: number;

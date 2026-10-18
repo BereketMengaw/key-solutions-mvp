@@ -61,8 +61,13 @@ never in the future:
 - Status times always run sent < preparing < ready < served < paid. The orders triggers
   (which stamp `now()`) are switched off inside the script's transaction only.
 
-Example run at 17:45 Addis: 25 paid, 17,890 ETB, average 715.60, top items Macchiato ×22,
-Buna ×18, Beef Tibs ×9, Shiro Wot ×9, Tea ×8; cash 11 / telebirr 10 / cbe_birr 4.
+Beef ends between about 0.8 and 3.6 kg whatever the time of day (checked for every 5 minutes
+from 00:35 to 24:00), so it is always low and the live 2 Beef Tibs (0.5 kg) always fits; the
+script refuses rather than save a day that breaks either. It also refuses before 00:30 Addis.
+
+Example run at 21:30 Addis: 25 paid, 21,800 ETB, average 872.00, top items Buna ×19,
+Macchiato ×18, Shiro Wot ×11, Beef Tibs ×10, Tea ×10; cash 11 / telebirr 10 / cbe_birr 4;
+beef 0.8 kg.
 
 ## Data model
 
@@ -70,13 +75,30 @@ Buna ×18, Beef Tibs ×9, Shiro Wot ×9, Tea ×8; cash 11 / telebirr 10 / cbe_bi
 |-------------------|-------|
 | `profiles`        | One per staff user. Made by trigger when `app_metadata.role` (service-role only) is set to a valid role, on create or later; no role, no profile, no access. Setting the role to null or anything invalid deletes the profile, or, if orders/stock movements reference it, keeps it with `role = null` (name stays for history, access is gone). `role` has no default and is nullable for that reason. |
 | `dining_tables`   | Tables 1–8. |
-| `menu_categories` | Breakfast, Main dishes, Hot drinks, Cold drinks (`sort_order`). |
-| `menu_items`      | 14 items, `price_etb numeric(10,2)`, `is_available`, `image_url` (empty for now). |
+| `menu_categories` | Breakfast, Main dishes, Hot drinks, Cold drinks (`sort_order`). `name_am` (see Amharic names). |
+| `menu_items`      | 14 items, `name_am`, `price_etb numeric(10,2)`, `is_available`, `image_url` (empty for now). |
 | `orders`          | `status` + one timestamp per status, set by trigger. `payment_method` (`cash`/`telebirr`/`cbe_birr`) is set exactly when the order becomes `paid`. `client_ref` (uuid, unique, nullable) is the idempotency key from `place_order`. |
 | `order_items`     | `unit_price_etb` is copied from the menu by trigger; clients don't send it. |
-| `ingredients`     | `quantity_on_hand` is changed only by the `stock_movements` trigger; a check keeps it ≥ 0. Low stock = `quantity_on_hand < low_stock_threshold`. |
+| `ingredients`     | `name_am`. `quantity_on_hand` is changed only by the `stock_movements` trigger; a check keeps it ≥ 0. Low stock = `quantity_on_hand < low_stock_threshold`. |
 | `recipe_items`    | Ingredient use per one item sold. Every menu item has a recipe. |
 | `stock_movements` | Append-only ledger (`order`, `restock`, `adjustment`). Opening stock is seeded as `adjustment` (`created_by` null). `order` rows carry `order_id` and are written by `place_order` (one per ingredient per order); `restock` rows by `add_stock`. `client_ref` (uuid, unique, nullable) is `add_stock`'s idempotency key. `note` (≤ 200 chars, `''` when none), `created_by` = who did it. |
+
+## Amharic names
+
+`menu_categories`, `menu_items` and `ingredients` have `name_am text not null default ''`
+next to `name` (migration `20261018180000_amharic_names.sql`; the seed fills all 4 + 14 + 16).
+Same read access as `name`: menu for all staff, ingredients for manager/owner, nothing for anon.
+When the app is in Amharic, show `name_am`, falling back to `name` if it is `''`.
+
+```ts
+supabase.from('menu_items').select('id, name, name_am, price_etb, category_id')
+```
+
+`dashboard_today()` returns `name_am` in every `top_items` and `low_stock` entry.
+
+**Server error text is English only.** RPC and trigger errors (`place_order`'s
+"Not enough Beef for 2 × Beef Tibs (0.3 kg left)", `add_stock`'s and the status rules'
+messages) come back in English whatever language the app is in; the apps show them as is.
 
 ## Auth
 
@@ -189,8 +211,8 @@ const today = data as unknown as DashboardToday;
     { "hour": 0, "sales_etb": 0 }, …, { "hour": 17, "sales_etb": 1370.00 }, …
   ],
   "top_items": [                        // ≤ 5, orders SENT today (any status)
-    { "menu_item_id": 5, "name": "Beef Tibs", "quantity": 2, "revenue_etb": 1300.00 },
-    { "menu_item_id": 9, "name": "Macchiato", "quantity": 1, "revenue_etb": 70.00 }
+    { "menu_item_id": 5, "name": "Beef Tibs", "name_am": "የበሬ ጥብስ", "quantity": 2, "revenue_etb": 1300.00 },
+    { "menu_item_id": 9, "name": "Macchiato", "name_am": "ማኪያቶ", "quantity": 1, "revenue_etb": 70.00 }
   ],
   "payment_mix": [                      // ALWAYS cash, telebirr, cbe_birr in that order
     { "method": "cash", "sales_etb": 0, "orders": 0 },
@@ -205,7 +227,7 @@ const today = data as unknown as DashboardToday;
       "waiter_name": "Hana Tesfaye", "total_etb": 2000.00 }
   ],
   "low_stock": [                        // quantity_on_hand < low_stock_threshold, most urgent first
-    { "id": 1, "name": "Beef", "unit": "kg", "quantity_on_hand": 4.800, "low_stock_threshold": 5.000 }
+    { "id": 1, "name": "Beef", "name_am": "የበሬ ሥጋ", "unit": "kg", "quantity_on_hand": 4.800, "low_stock_threshold": 5.000 }
   ]
 }
 ```

@@ -9,7 +9,6 @@ import {
   LayoutAnimation,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   useWindowDimensions,
 } from 'react-native';
@@ -18,6 +17,7 @@ import { useSafeAreaInsets } from 'react-native-safe-area-context';
 import { Ionicons } from '@expo/vector-icons';
 import type { OrderStatus } from '@shared/constants';
 import { nextOrderStatus } from '@shared/constants';
+import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { Banner, Bone, EmptyState, Skeleton } from '@/components/Feedback';
 import {
@@ -39,13 +39,12 @@ import { advanceOrder } from '@/lib/orders';
 import { useOrientationLock } from '@/lib/orientation';
 import { useOrdersChannel, type OrderChange } from '@/lib/realtime';
 import { supabase } from '@/lib/supabase';
-import { strings } from '@/strings';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
+import { useT } from '@/lib/i18n';
 import { breakpoints, colors, radius, spacing, statusColors, tabularNums, text, timing, touch } from '@/theme';
 
-const k = strings.kitchen;
-
 const SELECT =
-  'id, status, created_at, dining_tables(number), profiles(full_name), order_items(id, quantity, note, menu_items(name))';
+  'id, status, created_at, dining_tables(number), profiles(full_name), order_items(id, quantity, note, menu_items(name, name_am))';
 
 type Ticket = TicketData & { leaving: boolean };
 type Board = Map<number, Ticket>;
@@ -60,7 +59,7 @@ type Row = {
   created_at: string;
   dining_tables: { number: number };
   profiles: { full_name: string };
-  order_items: { id: number; quantity: number; note: string; menu_items: { name: string } }[];
+  order_items: { id: number; quantity: number; note: string; menu_items: { name: string; name_am: string } }[];
 };
 
 function toTicket(o: Row): Ticket | null {
@@ -71,7 +70,7 @@ function toTicket(o: Row): Ticket | null {
     createdAt: o.created_at,
     tableNumber: o.dining_tables.number,
     waiterName: o.profiles.full_name.trim(),
-    lines: o.order_items.map((l) => ({ id: l.id, quantity: l.quantity, note: l.note, name: l.menu_items.name })),
+    lines: o.order_items.map((l) => ({ id: l.id, quantity: l.quantity, note: l.note, name: l.menu_items.name, nameAm: l.menu_items.name_am })),
     leaving: false,
   };
 }
@@ -133,6 +132,8 @@ function mergeBoard(snapshot: Ticket[], prev: Board | null, touched: ReadonlySet
 
 export default function KitchenScreen() {
   useKeepAwake();
+  const strings = useT();
+  const k = strings.kitchen;
   useOrientationLock('landscape');
   const insets = useSafeAreaInsets();
   const { width } = useWindowDimensions();
@@ -158,9 +159,15 @@ export default function KitchenScreen() {
   const loadSeq = useRef(0);
   const touched = useRef<Set<number>>(new Set());
 
+  // Read through a ref so a language switch doesn't rebuild the realtime callbacks.
+  const announceNew = useRef(k.announceNew);
+  useEffect(() => {
+    announceNew.current = k.announceNew;
+  }, [k]);
+
   const highlight = useCallback((t: Ticket) => {
     setHighlights((prev) => new Set(prev).add(t.id));
-    AccessibilityInfo.announceForAccessibility(k.announceNew(t.tableNumber));
+    AccessibilityInfo.announceForAccessibility(announceNew.current(t.tableNumber));
   }, []);
 
   /** Puts tickets on the board (or replaces them), keeping the Map keyed by order id. */
@@ -330,6 +337,7 @@ export default function KitchenScreen() {
       title: strings.tables.signOutTitle,
       message: strings.tables.signOutMessage,
       confirmLabel: strings.common.signOut,
+      cancelLabel: strings.common.cancel,
       onConfirm: async () => {
         setSigningOut(true);
         stop();
@@ -475,6 +483,7 @@ export default function KitchenScreen() {
           </Text>
         </View>
         <View style={styles.right}>
+          <LanguageSwitch />
           <ConnectionPill state={connection} />
           <Button
             variant="ghost"

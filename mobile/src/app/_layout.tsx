@@ -7,6 +7,7 @@ import { SafeAreaProvider } from 'react-native-safe-area-context';
 
 import { AuthProvider } from '@/lib/auth';
 import { DraftProvider } from '@/lib/draft';
+import { LanguageProvider } from '@/lib/i18n';
 import { colors, fontFiles } from '@/theme';
 
 SplashScreen.preventAutoHideAsync().catch(() => {
@@ -26,25 +27,27 @@ export default function RootLayout() {
 
   return (
     <SafeAreaProvider>
-      <AuthProvider>
-        <DraftProvider>
-          <StatusBar style="dark" />
-          <Stack
-            screenOptions={{
-              headerShown: false,
-              contentStyle: { backgroundColor: colors.background },
-            }}
-          >
-            <Stack.Screen name="index" />
-            <Stack.Screen name="login" options={{ gestureEnabled: false, animation: 'fade' }} />
-            <Stack.Screen name="wrong-role" options={{ gestureEnabled: false, animation: 'fade' }} />
-            <Stack.Screen name="(waiter)" options={{ gestureEnabled: false, animation: 'fade' }} />
-            <Stack.Screen name="kitchen" options={{ gestureEnabled: false, animation: 'fade' }} />
-            <Stack.Screen name="table/[tableId]/menu" />
-            <Stack.Screen name="table/[tableId]/cart" />
-          </Stack>
-        </DraftProvider>
-      </AuthProvider>
+      <LanguageProvider>
+        <AuthProvider>
+          <DraftProvider>
+            <StatusBar style="dark" />
+            <Stack
+              screenOptions={{
+                headerShown: false,
+                contentStyle: { backgroundColor: colors.background },
+              }}
+            >
+              <Stack.Screen name="index" />
+              <Stack.Screen name="login" options={{ gestureEnabled: false, animation: 'fade' }} />
+              <Stack.Screen name="wrong-role" options={{ gestureEnabled: false, animation: 'fade' }} />
+              <Stack.Screen name="(waiter)" options={{ gestureEnabled: false, animation: 'fade' }} />
+              <Stack.Screen name="kitchen" options={{ gestureEnabled: false, animation: 'fade' }} />
+              <Stack.Screen name="table/[tableId]/menu" />
+              <Stack.Screen name="table/[tableId]/cart" />
+            </Stack>
+          </DraftProvider>
+        </AuthProvider>
+      </LanguageProvider>
     </SafeAreaProvider>
   );
 }

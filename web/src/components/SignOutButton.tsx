@@ -4,12 +4,13 @@ import { useRouter } from 'next/navigation';
 import { useState } from 'react';
 import { Button, type ButtonProps } from '@/components/ui';
 import { markSigningOut } from '@/lib/session';
-import { s } from '@/lib/strings';
+import { useStrings } from '@/components/LangProvider';
 import { getSupabase } from '@/lib/supabase/client';
 
 /** No confirmation. If the server call fails, the local session is cleared anyway. */
 export function SignOutButton(props: Omit<ButtonProps, 'onClick' | 'loading' | 'loadingLabel' | 'children'>) {
   const router = useRouter();
+  const s = useStrings();
   const [busy, setBusy] = useState(false);
   async function signOut() {
     setBusy(true);

@@ -1,13 +1,15 @@
 // Kitchen board building blocks: StatusSolidButton, ConnectionPill, KitchenLane, KitchenTicket, ReadyTicket.
 import { Ionicons } from '@expo/vector-icons';
 import { useEffect, useState, type ReactNode } from 'react';
-import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, Text, View } from 'react-native';
+import { ActivityIndicator, Animated, Platform, Pressable, StyleSheet, View } from 'react-native';
 
 import type { OrderStatus } from '@shared/constants';
+import { Text } from '@/components/Text';
 import { formatTime, minutesSince } from '@/lib/format';
 import { KITCHEN_STATUSES, PREPARING, READY, SENT } from '@/lib/names';
 import type { Connection } from '@/lib/realtime';
-import { strings } from '@/strings';
+import { useLocalName, useT } from '@/lib/i18n';
+import type { Strings } from '@/strings';
 import {
   colors,
   lineHeight,
@@ -27,10 +29,9 @@ import { Banner } from './Feedback';
 import { HighlightRing, useHighlightFade } from './HighlightRing';
 import { StatusBadge } from './StatusBadge';
 
-const k = strings.kitchen;
 const nativeDriver = Platform.OS !== 'web';
 
-export type KitchenLine = { id: number; quantity: number; note: string; name: string };
+export type KitchenLine = { id: number; quantity: number; note: string; name: string; nameAm: string };
 export type LaneStatus = (typeof KITCHEN_STATUSES)[number];
 
 export const laneIcons: Record<LaneStatus, IconName> = {
@@ -81,6 +82,7 @@ const pillLook: Record<Connection, { bg: string; fg: string }> = {
 };
 
 export function ConnectionPill({ state }: { state: Connection }) {
+  const k = useT().kitchen;
   const look = pillLook[state];
   const label = k.connection[state];
   return (
@@ -105,6 +107,7 @@ export function ConnectionPill({ state }: { state: Connection }) {
 /* ---------------------------------------------------------------- KitchenLane */
 
 export function LaneHeader({ status, count }: { status: LaneStatus; count: number | null }) {
+  const k = useT().kitchen;
   const c = statusColors[status];
   const label = k.lanes[status];
   return (
@@ -172,14 +175,15 @@ function EnterLeave({ leaving, onGone, children }: { leaving: boolean; onGone: (
 
 /* ---------------------------------------------------------------- Timer */
 
-export function waitLabel(minutes: number): string {
+export function waitLabel(k: Strings['kitchen'], minutes: number): string {
   if (minutes === 0) return k.justNow;
   if (minutes < 60) return k.minutes(minutes);
   return k.hours(Math.floor(minutes / 60), minutes % 60);
 }
 
 function Timer({ minutes, late }: { minutes: number; late: boolean }) {
-  const label = waitLabel(minutes);
+  const k = useT().kitchen;
+  const label = waitLabel(k, minutes);
   if (late) {
     return (
       <View style={styles.lateChip}>
@@ -232,6 +236,9 @@ function NewHighlight({
 
 export function KitchenTicket(props: TicketProps) {
   const { ticket, now, highlighted, onHighlightDone, busy, failed, onAction, leaving, onGone } = props;
+  const strings = useT();
+  const k = strings.kitchen;
+  const localName = useLocalName();
   const minutes = minutesSince(ticket.createdAt, now);
   const late = minutes >= timing.overdueAfterMinutes;
   const c = statusColors[ticket.status];
@@ -241,7 +248,7 @@ export function KitchenTicket(props: TicketProps) {
     ticket.tableNumber,
     statusWord,
     k.a11ySentAgo(minutes),
-    ticket.lines.map((l) => k.a11yItem(l.quantity, l.name, l.note)).join(', '),
+    ticket.lines.map((l) => k.a11yItem(l.quantity, localName(l.name, l.nameAm), l.note)).join(', '),
     late,
   );
 
@@ -286,7 +293,7 @@ export function KitchenTicket(props: TicketProps) {
             <View key={l.id} style={styles.itemRow}>
               <Text style={[text('2xl', 'bold'), tabularNums, styles.qty]}>{k.qty(l.quantity)}</Text>
               <View style={styles.flex}>
-                <Text style={[text('2xl', 'semibold'), { color: colors.text }]}>{l.name}</Text>
+                <Text style={[text('2xl', 'semibold'), { color: colors.text }]}>{localName(l.name, l.nameAm)}</Text>
                 {l.note ? (
                   <View style={styles.note}>
                     <Text style={[text('xl', 'medium'), { color: colors.text }]}>{k.note(l.note)}</Text>
@@ -344,6 +351,8 @@ export function KitchenTicket(props: TicketProps) {
 
 export function ReadyTicket({ ticket, leaving, onGone }: { ticket: TicketData; leaving: boolean; onGone: () => void }) {
   const items = ticket.lines.reduce((n, l) => n + l.quantity, 0);
+  const strings = useT();
+  const k = strings.kitchen;
   return (
     <EnterLeave leaving={leaving} onGone={onGone}>
       <View style={styles.ready}>
@@ -364,6 +373,7 @@ export function ReadyTicket({ ticket, leaving, onGone }: { ticket: TicketData; l
 
 /** Ready strip chip (two-lane layout). */
 export function ReadyChip({ tableNumber }: { tableNumber: number }) {
+  const strings = useT();
   return (
     <View style={styles.chip}>
       <Text style={[text('lg', 'bold'), tabularNums, { color: statusColors.ready.fg }]}>

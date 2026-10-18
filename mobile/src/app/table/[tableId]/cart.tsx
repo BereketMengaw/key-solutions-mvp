@@ -8,11 +8,11 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   View,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/Text';
 import { Button } from '@/components/Button';
 import { Banner, EmptyState } from '@/components/Feedback';
 import { ItemTile } from '@/components/ItemTile';
@@ -22,13 +22,12 @@ import { TextField } from '@/components/TextField';
 import { TopBarStack } from '@/components/TopBar';
 import { useAuth } from '@/lib/auth';
 import { NOTE_MAX_LENGTH, useDraft, type DraftLine } from '@/lib/draft';
-import { formatEtb } from '@/lib/format';
 import { SENT } from '@/lib/names';
 import { supabase } from '@/lib/supabase';
-import { strings } from '@/strings';
+import { useLocalName, useT } from '@/lib/i18n';
+import type { Strings } from '@/strings';
 import { colors, radius, shadow, size, spacing, tabularNums, text, touch } from '@/theme';
 
-const s = strings.cart;
 const NOTE_COUNT_FROM = 100;
 
 type SendError =
@@ -44,7 +43,7 @@ type SentOrder = { id: number; tableNumber: number; lines: DraftLine[]; total: n
  * refusals (22023, e.g. "Not enough Beef for 2 × Beef Tibs") show its message as-is;
  * anything else shows the server's message.
  */
-function classify(status: number, code: string, message: string): SendError {
+function classify(s: Strings['cart'], status: number, code: string, message: string): SendError {
   if (status === 0 || status >= 500) return { kind: 'network' };
   if (status === 401 || code === '42501' || code === 'PGRST301' || code === 'PGRST303') return { kind: 'session' };
   if (code === '22023' && message) {
@@ -59,6 +58,9 @@ function classify(status: number, code: string, message: string): SendError {
 }
 
 export default function CartScreen() {
+  const strings = useT();
+  const s = strings.cart;
+  const localName = useLocalName();
   const insets = useSafeAreaInsets();
   const params = useLocalSearchParams<{ tableId: string; number?: string; seats?: string }>();
   const tableId = Number(params.tableId);
@@ -118,7 +120,7 @@ export default function CartScreen() {
     });
     setSending(false);
     if (error || data === null) {
-      setSendError(classify(status, error?.code ?? '', error?.message ?? ''));
+      setSendError(classify(s, status, error?.code ?? '', error?.message ?? ''));
       return;
     }
     setSent({ id: data, tableNumber, lines: lines.map((l) => ({ ...l, note: l.note.trim() })), total });
@@ -189,15 +191,15 @@ export default function CartScreen() {
                     {i > 0 ? <View style={styles.divider} /> : null}
                     <View style={styles.line}>
                       <View style={styles.rowA}>
-                        <ItemTile name={line.name} categorySortOrder={line.categorySortOrder} variant="small" />
+                        <ItemTile name={localName(line.name, line.nameAm)} categorySortOrder={line.categorySortOrder} variant="small" />
                         <View style={styles.flex}>
-                          <Text style={[text('md', 'semibold'), { color: colors.text }]}>{line.name}</Text>
+                          <Text style={[text('md', 'semibold'), { color: colors.text }]}>{localName(line.name, line.nameAm)}</Text>
                           <Text style={[text('sm'), tabularNums, { color: colors.textMuted }]}>
-                            {s.each(formatEtb(line.priceEtb))}
+                            {s.each(strings.common.money(line.priceEtb))}
                           </Text>
                         </View>
                         <Text style={[text('md', 'bold'), tabularNums, { color: colors.text }]}>
-                          {formatEtb(line.quantity * line.priceEtb)}
+                          {strings.common.money(line.quantity * line.priceEtb)}
                         </Text>
                       </View>
                       <View style={[styles.rowB, styles.indent]}>
@@ -218,7 +220,7 @@ export default function CartScreen() {
                           />
                         )}
                         <QuantityStepper
-                          item={line.name}
+                          item={localName(line.name, line.nameAm)}
                           quantity={line.quantity}
                           disabled={sending}
                           onIncrement={() => edit(() => draft.increment(line.menuItemId))}
@@ -229,7 +231,7 @@ export default function CartScreen() {
                         <View style={[styles.note, styles.indent]}>
                           <TextField
                             multilineNote
-                            accessibilityLabel={s.noteFor(line.name)}
+                            accessibilityLabel={s.noteFor(localName(line.name, line.nameAm))}
                             placeholder={s.notePlaceholder}
                             value={line.note}
                             maxLength={NOTE_MAX_LENGTH}
@@ -278,7 +280,7 @@ export default function CartScreen() {
               <>
                 <View style={styles.totalRow}>
                   <Text style={[text('lg', 'semibold'), { color: colors.text }]}>{strings.common.total}</Text>
-                  <Text style={[text('2xl', 'bold'), tabularNums, { color: colors.text }]}>{formatEtb(total)}</Text>
+                  <Text style={[text('2xl', 'bold'), tabularNums, { color: colors.text }]}>{strings.common.money(total)}</Text>
                 </View>
                 <Button
                   icon={sendError?.kind === 'network' ? 'refresh' : 'paper-plane'}
@@ -298,6 +300,9 @@ export default function CartScreen() {
 }
 
 function SentView({ order, onTables, onOrders }: { order: SentOrder; onTables: () => void; onOrders: () => void }) {
+  const strings = useT();
+  const s = strings.cart;
+  const localName = useLocalName();
   const insets = useSafeAreaInsets();
   const [enter] = useState(() => new Animated.Value(0));
 
@@ -326,16 +331,16 @@ function SentView({ order, onTables, onOrders }: { order: SentOrder; onTables: (
             {order.lines.map((l) => (
               <View key={l.menuItemId} style={styles.receiptRow}>
                 <Text style={[text('sm'), styles.flex, { color: colors.text }]}>
-                  {strings.common.qtyLine(l.quantity, l.name)}
+                  {strings.common.qtyLine(l.quantity, localName(l.name, l.nameAm))}
                 </Text>
-                <Text style={[text('sm'), tabularNums, { color: colors.text }]}>{formatEtb(l.quantity * l.priceEtb)}</Text>
+                <Text style={[text('sm'), tabularNums, { color: colors.text }]}>{strings.common.money(l.quantity * l.priceEtb)}</Text>
               </View>
             ))}
           </View>
           <View style={styles.receiptDivider} />
           <View style={styles.receiptRow}>
             <Text style={[text('md', 'semibold'), { color: colors.text }]}>{strings.common.total}</Text>
-            <Text style={[text('md', 'bold'), tabularNums, { color: colors.text }]}>{formatEtb(order.total)}</Text>
+            <Text style={[text('md', 'bold'), tabularNums, { color: colors.text }]}>{strings.common.money(order.total)}</Text>
           </View>
         </View>
 

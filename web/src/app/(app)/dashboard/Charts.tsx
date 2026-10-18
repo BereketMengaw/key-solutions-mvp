@@ -16,10 +16,9 @@ import {
   formatHourRange,
   sharePercents,
 } from '@/lib/format';
-import { s } from '@/lib/strings';
+import { useLang, useStrings } from '@/components/LangProvider';
+import { nameIn } from '@/lib/i18n';
 import { Card, CardHeader, Tooltip, clampX, flashBg } from './bits';
-
-const t = s.dashboard;
 
 /* ---------------------------------------------------------------- Sales by hour */
 
@@ -44,6 +43,8 @@ export function SalesByHour({
   now: number;
   flashes: ReadonlySet<string>;
 }) {
+  const t = useStrings().dashboard;
+  const lang = useLang();
   const [active, setActive] = useState<number | null>(null);
 
   const nowHour = addisHour(now);
@@ -196,7 +197,7 @@ export function SalesByHour({
             {shownActive !== null && tip && (
               <Tooltip
                 id="hours-tip"
-                value={formatEtb(sales.get(shownActive) ?? 0)}
+                value={formatEtb(sales.get(shownActive) ?? 0, lang)}
                 label={formatHourRange(shownActive)}
                 className={cx('mb-2', tip.className)}
                 style={{ ...tip.style, bottom: `${pctOf(sales.get(shownActive) ?? 0)}%` }}
@@ -237,7 +238,7 @@ export function SalesByHour({
               {withSales.map((h) => (
                 <tr key={h}>
                   <td>{formatHourRange(h)}</td>
-                  <td>{formatEtb(sales.get(h) ?? 0)}</td>
+                  <td>{formatEtb(sales.get(h) ?? 0, lang)}</td>
                 </tr>
               ))}
             </tbody>
@@ -259,6 +260,8 @@ export function TopItems({
   ordersToday: number;
   flashes: ReadonlySet<string>;
 }) {
+  const t = useStrings().dashboard;
+  const lang = useLang();
   const rows = items.slice(0, dashboard.topItems);
   const top = Math.max(1, ...rows.map((r) => r.quantity));
   return (
@@ -277,13 +280,13 @@ export function TopItems({
               data-item={r.name}
               className={cx('px-2 py-1.5 rounded-md', flashBg(flashes.has(`item:${r.menu_item_id}`), 'bg-transparent'))}
             >
-              <span className="sr-only">{t.top.aria(i + 1, r.name, r.quantity, formatEtbNumber(r.revenue_etb))}</span>
+              <span className="sr-only">{t.top.aria(i + 1, nameIn(lang, r), r.quantity, formatEtbNumber(r.revenue_etb))}</span>
               <div aria-hidden="true">
                 <div className="flex items-baseline gap-3">
                   <span className="w-5 flex-none text-sm font-semibold text-text-subtle tabular-nums">{i + 1}</span>
-                  <span className="min-w-0 flex-1 text-md font-semibold text-text">{r.name}</span>
+                  <span className="min-w-0 flex-1 text-md font-semibold text-text">{nameIn(lang, r)}</span>
                   <span className="text-md font-semibold text-text tabular-nums">{t.top.qty(r.quantity)}</span>
-                  <span className="text-sm text-text-muted tabular-nums whitespace-nowrap">{formatEtb(r.revenue_etb)}</span>
+                  <span className="text-sm text-text-muted tabular-nums whitespace-nowrap">{formatEtb(r.revenue_etb, lang)}</span>
                 </div>
                 <div className="mt-2 ml-8">
                   <div
@@ -317,6 +320,8 @@ export function PaymentMix({
   paidOrders: number;
   flashes: ReadonlySet<string>;
 }) {
+  const t = useStrings().dashboard;
+  const lang = useLang();
   const [hover, setHover] = useState<PaymentMethod | null>(null);
   const rows = PAYMENT_METHODS.map((method) => {
     const r = mix.find((m) => m.method === method);
@@ -364,7 +369,7 @@ export function PaymentMix({
             {hovered && tip && (
               <Tooltip
                 id="mix-tip"
-                value={formatEtb(hovered.sales)}
+                value={formatEtb(hovered.sales, lang)}
                 label={t.mix.tooltip(t.mix.method[hovered.method], hovered.orders)}
                 className={cx('bottom-full mb-2', tip.className)}
                 style={tip.style}
@@ -389,7 +394,7 @@ export function PaymentMix({
                   <span aria-hidden="true" className={cx('size-3 flex-none rounded-sm', SWATCH[r.method])} />
                   <span className="flex-1 text-md text-text">{t.mix.method[r.method]}</span>
                   <span className={cx('text-md font-semibold tabular-nums whitespace-nowrap', none ? 'text-text-subtle' : 'text-text')}>
-                    {formatEtb(r.sales)}
+                    {formatEtb(r.sales, lang)}
                   </span>
                   <span className={cx('w-12 text-right text-sm tabular-nums', none ? 'text-text-subtle' : 'text-text-muted')}>
                     {shares[i]}
@@ -407,6 +412,7 @@ export function PaymentMix({
 /* ---------------------------------------------------------------- Skeletons */
 
 export function ChartsSkeleton() {
+  const t = useStrings().dashboard;
   return (
     <>
       <Card labelledBy="hours-title">

@@ -4,9 +4,11 @@ import { useRef, useState, type FormEvent } from 'react';
 import { Drawer } from '@/components/Drawer';
 import { Icon } from '@/components/icons';
 import { Banner, Button, FieldError, cx, fieldBox } from '@/components/ui';
-import { formatQuantity, isLow, unitWord } from '@/lib/format';
+import { useLang, useStrings } from '@/components/LangProvider';
+import { formatQuantity, isLow, unitLabel, unitWord } from '@/lib/format';
+import { nameIn, type Lang } from '@/lib/i18n';
 import type { Ingredient } from '@/lib/stock/StockProvider';
-import { s } from '@/lib/strings';
+import type { Strings } from '@/lib/strings';
 import { getSupabase } from '@/lib/supabase/client';
 
 const NOTE_MAX = 120;
@@ -19,7 +21,7 @@ const LIMIT = { kg: 1_000, L: 1_000, pcs: 10_000 } as const;
  * Maps an add_stock 22023 (bad input) to the field it belongs to, by the backend's message.
  * Anything unrecognised returns null and the caller shows the server message.
  */
-function fieldErrorFor(message: string, ing: Ingredient): Errors | null {
+function fieldErrorFor(message: string, ing: Ingredient, s: Strings, lang: Lang): Errors | null {
   const m = message.toLowerCase();
   if (m.includes('ingredient')) return { ingredient: s.drawer.errUnknownIngredient };
   if (m.includes('note')) return { note: s.drawer.errNoteLong };
@@ -27,7 +29,7 @@ function fieldErrorFor(message: string, ing: Ingredient): Errors | null {
     if (m.includes('more than 0')) return { amount: s.drawer.errPositive };
     if (m.includes('decimal')) return { amount: s.drawer.errDecimals };
     const max = /at most ([\d,.]+)/.exec(m);
-    if (max) return { amount: s.drawer.errTooMuch(formatQuantity(Number(max[1].replace(/,/g, '')), ing.unit)) };
+    if (max) return { amount: s.drawer.errTooMuch(formatQuantity(Number(max[1].replace(/,/g, '')), ing.unit, lang)) };
     return { amount: message };
   }
   return null;
@@ -36,7 +38,7 @@ function fieldErrorFor(message: string, ing: Ingredient): Errors | null {
 type Parsed = { ok: true; value: number } | { ok: false; error: string };
 
 /** "2,5" → 2.5; spaces trimmed. Validation per 04-stock.md → Add stock → Validation. */
-export function parseAmount(raw: string, ing: Ingredient | undefined): Parsed {
+export function parseAmount(raw: string, ing: Ingredient | undefined, s: Strings, lang: Lang): Parsed {
   const text = raw.trim().replace(',', '.');
   if (!text) return { ok: false, error: s.drawer.errEmpty };
   if (!/^[+-]?(\d+\.?\d*|\.\d+)$/.test(text)) return { ok: false, error: s.drawer.errNumber };
@@ -45,11 +47,11 @@ export function parseAmount(raw: string, ing: Ingredient | undefined): Parsed {
   if (value <= 0) return { ok: false, error: s.drawer.errPositive };
   if (!ing) return { ok: true, value };
   const pieces = ing.unit === 'pcs';
-  if (pieces && !Number.isInteger(value)) return { ok: false, error: s.drawer.errWhole(ing.name) };
+  if (pieces && !Number.isInteger(value)) return { ok: false, error: s.drawer.errWhole(nameIn(lang, ing)) };
   const decimals = text.includes('.') ? text.split('.')[1].length : 0;
   if (!pieces && decimals > 3) return { ok: false, error: s.drawer.errDecimals };
   const limit = LIMIT[ing.unit as keyof typeof LIMIT] ?? LIMIT.kg;
-  if (value > limit) return { ok: false, error: s.drawer.errTooMuch(formatQuantity(limit, ing.unit)) };
+  if (value > limit) return { ok: false, error: s.drawer.errTooMuch(formatQuantity(limit, ing.unit, lang)) };
   return { ok: true, value };
 }
 
@@ -73,6 +75,8 @@ export function AddStockDrawer({
   onAdded: (r: AddStockResult) => void;
   returnFocusRef: React.RefObject<HTMLElement | null>;
 }) {
+  const s = useStrings();
+  const lang = useLang();
   // The parent remounts this form (key) every time the drawer opens, so it always starts fresh.
   const [id, setId] = useState<number | null>(initialId);
   const [amount, setAmount] = useState('');
@@ -92,7 +96,7 @@ export function AddStockDrawer({
   const clientRef = useRef<{ key: string; ref: string } | null>(null);
 
   const ing = ingredients.find((i) => i.id === id);
-  const parsed = parseAmount(amount, ing);
+  const parsed = parseAmount(amount, ing, s, lang);
   const after = ing && parsed.ok ? ing.quantity_on_hand + parsed.value : null;
 
   const touch = () => setBanner(null);
@@ -102,7 +106,7 @@ export function AddStockDrawer({
     if (busy) return;
     const found: Errors = {};
     if (!ing) found.ingredient = s.drawer.errChoose;
-    const p = parseAmount(amount, ing);
+    const p = parseAmount(amount, ing, s, lang);
     if (!p.ok) found.amount = p.error;
     setErrors(found);
     if (found.ingredient) return selectRef.current?.focus();
@@ -133,7 +137,7 @@ export function AddStockDrawer({
           clientRef.current = null;
           setBanner({ title: s.drawer.refUsedTitle, body: s.drawer.refUsedBody });
           submitRef.current?.focus();
-        } else if (error.code === '22023' && (fieldErrors = fieldErrorFor(error.message, ing))) {
+        } else if (error.code === '22023' && (fieldErrors = fieldErrorFor(error.message, ing, s, lang))) {
           setErrors(fieldErrors);
           (fieldErrors.ingredient ? selectRef : fieldErrors.note ? noteRef : amountRef).current?.focus();
         } else if (error.code === '22023' || error.code === '23514') {
@@ -172,7 +176,7 @@ export function AddStockDrawer({
         loadingLabel={s.drawer.submitting}
         className="flex-1 md:flex-none"
       >
-        {ing && parsed.ok ? s.drawer.submitQty(formatQuantity(parsed.value, ing.unit)) : s.drawer.submit}
+        {ing && parsed.ok ? s.drawer.submitQty(formatQuantity(parsed.value, ing.unit, lang)) : s.drawer.submit}
       </Button>
     </div>
   );
@@ -207,7 +211,7 @@ export function AddStockDrawer({
                 touch();
                 setErrors((prev) => {
                   const nextIng = ingredients.find((i) => i.id === nextId);
-                  const p = parseAmount(amount, nextIng);
+                  const p = parseAmount(amount, nextIng, s, lang);
                   return { ingredient: undefined, amount: prev.amount ? (p.ok ? undefined : p.error) : undefined };
                 });
               }}
@@ -222,7 +226,7 @@ export function AddStockDrawer({
               )}
               {ingredients.map((i) => (
                 <option key={i.id} value={i.id}>
-                  {s.drawer.option(i.name, formatQuantity(i.quantity_on_hand, i.unit), isLow(i.quantity_on_hand, i.low_stock_threshold))}
+                  {s.drawer.option(nameIn(lang, i), formatQuantity(i.quantity_on_hand, i.unit, lang), isLow(i.quantity_on_hand, i.low_stock_threshold))}
                 </option>
               ))}
             </select>
@@ -256,7 +260,7 @@ export function AddStockDrawer({
             />
             {ing && (
               <span aria-hidden="true" className="absolute right-4 top-1/2 -translate-y-1/2 text-md font-semibold text-text-muted pointer-events-none">
-                {ing.unit}
+                {unitLabel(ing.unit, lang)}
               </span>
             )}
           </div>
@@ -264,7 +268,7 @@ export function AddStockDrawer({
             <FieldError id={amountErrId} message={errors.amount} />
           ) : (
             <p id={amountHelpId} className="mt-2 text-sm text-text-muted">
-              {ing ? s.drawer.helper(unitWord(ing.unit)) : s.drawer.chooseFirst}
+              {ing ? s.drawer.helper(unitWord(ing.unit, lang)) : s.drawer.chooseFirst}
             </p>
           )}
         </div>
@@ -307,7 +311,7 @@ export function AddStockDrawer({
                     isLow(ing.quantity_on_hand, ing.low_stock_threshold) ? 'text-danger' : 'text-text',
                   )}
                 >
-                  {formatQuantity(ing.quantity_on_hand, ing.unit)}
+                  {formatQuantity(ing.quantity_on_hand, ing.unit, lang)}
                 </p>
               </div>
               <span aria-hidden="true" className="text-xl text-text-subtle">
@@ -316,7 +320,7 @@ export function AddStockDrawer({
               <div>
                 <p className="text-xs font-semibold text-text-muted">{s.drawer.after}</p>
                 <p className="text-xl font-bold tabular-nums text-text">
-                  {after == null ? s.stock.tiles.dash : formatQuantity(after, ing.unit)}
+                  {after == null ? s.stock.tiles.dash : formatQuantity(after, ing.unit, lang)}
                 </p>
               </div>
             </div>
@@ -329,7 +333,8 @@ export function AddStockDrawer({
 }
 
 function PreviewLine({ ing, after }: { ing: Ingredient; after: number | null }) {
-  const threshold = formatQuantity(ing.low_stock_threshold, ing.unit);
+  const s = useStrings();
+  const threshold = formatQuantity(ing.low_stock_threshold, ing.unit, useLang());
   const wasLow = isLow(ing.quantity_on_hand, ing.low_stock_threshold);
   if (after != null && wasLow && !isLow(after, ing.low_stock_threshold)) {
     return (

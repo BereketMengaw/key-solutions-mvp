@@ -8,30 +8,24 @@ import {
   Platform,
   ScrollView,
   StyleSheet,
-  Text,
   View,
   type TextInputInstance,
 } from 'react-native';
 import { useSafeAreaInsets } from 'react-native-safe-area-context';
 
+import { Text } from '@/components/Text';
 import { BrandMark } from '@/components/BrandMark';
+import { LanguageSwitch } from '@/components/LanguageSwitch';
 import { Button } from '@/components/Button';
 import { Banner } from '@/components/Feedback';
 import { TextField } from '@/components/TextField';
 import { homeFor, useAuth } from '@/lib/auth';
 import { supabase } from '@/lib/supabase';
-import { strings } from '@/strings';
+import { useT } from '@/lib/i18n';
 import { colors, radius, shadow, spacing, text } from '@/theme';
 
 type FormError = 'wrong' | 'network' | 'tooMany';
 
-const s = strings.login;
-
-const bannerCopy: Record<FormError, { title: string; body: string }> = {
-  wrong: { title: s.wrongTitle, body: s.wrongBody },
-  network: { title: strings.common.cantReachServer, body: strings.common.checkConnection },
-  tooMany: { title: s.tooManyTitle, body: s.tooManyBody },
-};
 
 /** Maps a sign-in failure to one of our messages. Raw Supabase text is never shown. */
 function classify(error: unknown): FormError {
@@ -43,6 +37,13 @@ function classify(error: unknown): FormError {
 }
 
 export default function Login() {
+  const strings = useT();
+  const s = strings.login;
+  const bannerCopy: Record<FormError, { title: string; body: string }> = {
+    wrong: { title: s.wrongTitle, body: s.wrongBody },
+    network: { title: strings.common.cantReachServer, body: strings.common.checkConnection },
+    tooMany: { title: s.tooManyTitle, body: s.tooManyBody },
+  };
   const insets = useSafeAreaInsets();
   const { loadProfile } = useAuth();
   const [email, setEmail] = useState('');
@@ -114,6 +115,9 @@ export default function Login() {
       style={styles.screen}
       behavior={Platform.OS === 'ios' ? 'padding' : 'height'}
     >
+      <View style={[styles.language, { top: insets.top + spacing[2], right: spacing[4] }]}>
+        <LanguageSwitch />
+      </View>
       <ScrollView
         keyboardShouldPersistTaps="handled"
         contentContainerStyle={[styles.content, { paddingBottom: insets.bottom + spacing[4] }]}
@@ -189,6 +193,7 @@ export default function Login() {
 const styles = StyleSheet.create({
   screen: { flex: 1, backgroundColor: colors.background },
   content: { flexGrow: 1, paddingHorizontal: spacing[4] },
+  language: { position: 'absolute', zIndex: 1 },
   brand: { flex: 1, justifyContent: 'flex-end' },
   wordmark: { marginTop: spacing[6], color: colors.text },
   tagline: { marginTop: spacing[2], color: colors.textMuted },

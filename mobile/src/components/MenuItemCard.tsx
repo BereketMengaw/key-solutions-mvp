@@ -1,8 +1,8 @@
 import { Ionicons } from '@expo/vector-icons';
-import { Pressable, StyleSheet, Text, View } from 'react-native';
+import { Pressable, StyleSheet, View } from 'react-native';
 
-import { formatEtb } from '@/lib/format';
-import { strings } from '@/strings';
+import { Text } from '@/components/Text';
+import { useT } from '@/lib/i18n';
 import { colors, lineHeight, radius, shadow, size, spacing, tabularNums, text, touch } from '@/theme';
 import { ItemTile } from './ItemTile';
 import { QuantityStepper } from './QuantityStepper';
@@ -18,8 +18,9 @@ type Props = {
 };
 
 export function MenuItemCard({ name, priceEtb, categorySortOrder, quantity, onAdd, onIncrement, onDecrement }: Props) {
+  const strings = useT();
   const selected = quantity > 0;
-  const price = formatEtb(priceEtb);
+  const price = strings.common.money(priceEtb);
   const content = (pressed: boolean) => (
     <>
       <View>
