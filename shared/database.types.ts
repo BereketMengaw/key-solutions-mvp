@@ -250,7 +250,7 @@ export type Database = {
           created_at?: string
           full_name?: string
           id: string
-          role?: Database["public"]["Enums"]["app_role"]
+          role: Database["public"]["Enums"]["app_role"]
         }
         Update: {
           created_at?: string
@@ -353,6 +353,10 @@ export type Database = {
       auth_role: {
         Args: never
         Returns: Database["public"]["Enums"]["app_role"]
+      }
+      place_order: {
+        Args: { p_items: Json; p_table_id: number }
+        Returns: number
       }
     }
     Enums: {

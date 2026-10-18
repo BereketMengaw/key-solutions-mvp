@@ -15,6 +15,7 @@ brand color. Light theme only for the demo.
 | Card / input surface | `colors.surface` | `#FFFFFF` |
 | Muted fill | `colors.surfaceMuted` | `#F3ECE3` |
 | Border / strong border | `colors.border` / `borderStrong` | `#E5DACB` / `#CDBBA6` |
+| Input / control outline | `colors.borderControl` | `#958070` |
 | Text | `colors.text` | `#2B1D16` |
 | Secondary text | `colors.textMuted` | `#6B5A4E` |
 | Hint text | `colors.textSubtle` | `#7A6253` |
@@ -34,6 +35,22 @@ brand color. Light theme only for the demo.
 | paid | `#155E57` | `#DDF1EF` |
 | lowStock | `#A3221A` | `#FBE3E0` |
 
+`statusColors` is checked against `OrderStatus` from `shared/constants.ts` with
+`satisfies` (a type-only import, erased at runtime). Adding or removing an order status
+without updating the colors fails every app's typecheck.
+
+### Category tints (menu item fallback)
+
+Menu items have no photos. Each item card shows a tinted tile with a monogram instead,
+picked by category position: `categoryTints[(sortOrder - 1) % categoryTints.length]`.
+
+| # | Seed category | fg | bg | Ratio |
+|---|---|---|---|---|
+| 1 | Breakfast (saffron) | `#7A4A06` | `#FBE7C2` | 6.16 |
+| 2 | Main dishes (berbere) | `#8E2C12` | `#F8DDD2` | 6.46 |
+| 3 | Hot drinks (roast) | `#5A3A26` | `#EBDDD0` | 7.63 |
+| 4 | Cold drinks (avocado) | `#3D5A16` | `#E3EDD2` | 6.48 |
+
 **Status never relies on color alone.** Every badge, ticket and alert shows the status
 word (and an icon where there is room). Color-blind staff and a glare-washed kitchen
 tablet must still read it.
@@ -42,7 +59,11 @@ tablet must still read it.
 
 Every fg/bg pair above, primary on every surface, white on primary/pressed, and all
 three text colors on every surface pass WCAG AA (4.5:1). Lowest pair: `textSubtle` on
-`surfaceMuted`, 4.84:1. If you add a color, check it before using it.
+`surfaceMuted`, 4.84:1. Also checked for slice 2: `primary` on `primarySoft` 5.23,
+`textMuted` on `primarySoft` 5.74, `danger` on `dangerSoft` 6.13, `success` on
+`successSoft` 5.65. Non-text (WCAG 1.4.11, 3:1): `borderControl` on surface 3.75,
+background 3.49, surfaceMuted 3.20. `border`/`borderStrong` are decorative only (card
+edges), never the only edge of an input. If you add a color, check it before using it.
 
 ### Dark mode later
 
@@ -62,7 +83,11 @@ which theme `colors` points to.
 
 ## Touch
 
-Anything tappable is at least `touch.minTarget` (48) high and wide.
+Anything tappable is at least `touch.minTarget` (48) high and wide. The one primary action
+on a screen (Sign in, Send to kitchen, cart bar) is `touch.primaryAction` (56) high.
+Icon and tile sizes live in `size`.
+
+Component and screen specs: `components.md`, `screens/`.
 
 ## Using the tokens
 

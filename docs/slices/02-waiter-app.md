@@ -1,6 +1,6 @@
 # Slice 2 — Waiter app
 
-**Status:** approved 2026-10-18 (Bereket: "when it's done continue the next"), in progress
+**Status:** done 2026-10-18 — code-quality PASS
 **Agents:** `ui-designer` → `backend` → `mobile` → `code-quality`
 
 ## Goal

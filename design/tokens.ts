@@ -9,8 +9,12 @@
  * - Status is never shown by color alone: always pair a status color with its label.
  * - Every fg/bg pair below passes WCAG AA (4.5:1). See design/README.md.
  *
- * No imports, no dependencies: safe to import from both apps.
+ * No runtime imports, no dependencies: safe to import from both apps.
+ * The one `import type` below is erased at compile time; it only lets the
+ * compiler check that statusColors covers exactly the shared order statuses.
  */
+
+import type { OrderStatus } from '../shared/constants';
 
 /* ------------------------------------------------------------------ */
 /* Raw palette — named by hue, never used directly by screens.         */
@@ -26,6 +30,7 @@ export const palette = {
   cream300: '#CDBBA6',
 
   // Coffee browns (text)
+  coffee400: '#958070',
   coffee500: '#7A6253',
   coffee600: '#6B5A4E',
   coffee900: '#2B1D16',
@@ -48,6 +53,15 @@ export const palette = {
   teal700: '#155E57',
   red50: '#FBE3E0',
   red700: '#A3221A',
+
+  // Menu category tints (item tile fallback when there is no photo)
+  saffron50: '#FBE7C2',
+  saffron800: '#7A4A06',
+  berbere100: '#F8DDD2',
+  roast100: '#EBDDD0',
+  roast800: '#5A3A26',
+  avocado50: '#E3EDD2',
+  avocado800: '#3D5A16',
 } as const;
 
 /* ------------------------------------------------------------------ */
@@ -63,6 +77,8 @@ const light = {
   surfaceMuted: palette.cream100, // table rows, section fills
   border: palette.cream200,
   borderStrong: palette.cream300,
+  /** Outline of inputs and outlined controls: 3:1+ on every surface (WCAG 1.4.11). */
+  borderControl: palette.coffee400,
 
   // Text
   text: palette.coffee900, // primary text
@@ -99,6 +115,12 @@ export const colors = themes.light;
 /* Always render the status label next to the color.                    */
 /* ------------------------------------------------------------------ */
 
+export type ColorPair = { readonly bg: string; readonly fg: string };
+
+/**
+ * `satisfies` fails to compile if an order status is added to or removed from
+ * shared/constants.ts without a matching color here (missing or extra key).
+ */
 export const statusColors = {
   sent: { bg: palette.blue50, fg: palette.blue700 },
   preparing: { bg: palette.amber50, fg: palette.amber700 },
@@ -106,9 +128,25 @@ export const statusColors = {
   served: { bg: palette.stone100, fg: palette.stone700 },
   paid: { bg: palette.teal50, fg: palette.teal700 },
   lowStock: { bg: palette.red50, fg: palette.red700 },
-} as const;
+} as const satisfies Record<OrderStatus | 'lowStock', ColorPair>;
 
 export type StatusColorKey = keyof typeof statusColors;
+
+/* ------------------------------------------------------------------ */
+/* Category tints — the item tile fallback when a menu item has no      */
+/* photo. Picked by the category's position (sort_order), not its name, */
+/* so renamed or translated categories keep working:                    */
+/*   categoryTints[(sortOrder - 1) % categoryTints.length]              */
+/* Seed order: Breakfast, Main dishes, Hot drinks, Cold drinks.         */
+/* fg on bg passes AA (lowest 6.16:1).                                  */
+/* ------------------------------------------------------------------ */
+
+export const categoryTints = [
+  { bg: palette.saffron50, fg: palette.saffron800 }, // 1 Breakfast — saffron
+  { bg: palette.berbere100, fg: palette.berbere700 }, // 2 Main dishes — berbere
+  { bg: palette.roast100, fg: palette.roast800 }, // 3 Hot drinks — roast coffee
+  { bg: palette.avocado50, fg: palette.avocado800 }, // 4 Cold drinks — avocado
+] as const satisfies readonly ColorPair[];
 
 /* ------------------------------------------------------------------ */
 /* Spacing — 4-point scale.                                             */
@@ -230,6 +268,31 @@ export const shadows = {
 export const touch = {
   /** Minimum height and width of anything tappable. */
   minTarget: 48,
+  /** Height of the one primary action on a screen (Sign in, Send to kitchen, cart bar). */
+  primaryAction: 56,
+} as const;
+
+/* ------------------------------------------------------------------ */
+/* Fixed sizes for icons and fallback tiles.                            */
+/* ------------------------------------------------------------------ */
+
+export const size = {
+  iconSm: 16,
+  icon: 20,
+  iconLg: 24,
+  iconXl: 40,
+  /** Square item tile in cart / order rows. */
+  tileSm: 48,
+  /** Height of the tinted tile at the top of a menu item card. */
+  tileCard: 88,
+  /** Brand mark (login, startup). */
+  brandMark: 64,
+  /** Success / empty-state icon circle. */
+  heroCircle: 88,
+  /** Minimum height of a table card on the Tables grid. */
+  tableCard: 136,
+  /** Max width of centered body copy (empty states, confirmations). */
+  textBlock: 300,
 } as const;
 
 export const tokens = {
@@ -237,6 +300,7 @@ export const tokens = {
   themes,
   colors,
   statusColors,
+  categoryTints,
   spacing,
   radius,
   fontFamily,
@@ -245,6 +309,7 @@ export const tokens = {
   fontWeight,
   shadows,
   touch,
+  size,
 } as const;
 
 export default tokens;
